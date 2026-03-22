@@ -132,26 +132,47 @@ export default function Home() {
 
         {/* Results */}
         {result && (
-          <div className="mt-8 bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-            <div className="px-5 py-4 border-b border-gray-100">
-              <p className="text-xs font-medium text-gray-400 uppercase tracking-wide">Page</p>
-              <p className="mt-0.5 text-sm font-medium text-gray-800 truncate">{result.pageTitle}</p>
-            </div>
-
-            <div className="px-5">
-              <div className="flex items-center justify-between py-3 border-b border-gray-100">
-                <span className="text-xs font-medium text-gray-400 uppercase tracking-wide">Keyword</span>
-                <span className="text-xs font-medium text-gray-400 uppercase tracking-wide">Relevance</span>
+          <div className="mt-8 flex flex-col gap-4">
+            {/* Page details */}
+            <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+              <div className="px-5 py-3 border-b border-gray-100 bg-gray-50">
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Page Details</p>
               </div>
-              {result.keywords.map((kw) => (
-                <KeywordRow key={kw.keyword} keyword={kw} />
-              ))}
+              <div className="divide-y divide-gray-100">
+                <div className="px-5 py-3">
+                  <p className="text-xs font-medium text-gray-400 mb-0.5">Meta Title</p>
+                  <p className="text-sm text-gray-800">{result.metaTitle || <span className="text-gray-400 italic">Not found</span>}</p>
+                </div>
+                <div className="px-5 py-3">
+                  <p className="text-xs font-medium text-gray-400 mb-0.5">Meta Description</p>
+                  <p className="text-sm text-gray-800">{result.metaDescription || <span className="text-gray-400 italic">Not found</span>}</p>
+                </div>
+                <div className="px-5 py-3">
+                  <p className="text-xs font-medium text-gray-400 mb-0.5">H1</p>
+                  <p className="text-sm text-gray-800">{result.h1 || <span className="text-gray-400 italic">Not found</span>}</p>
+                </div>
+              </div>
             </div>
 
-            <div className="px-5 py-3 bg-gray-50 border-t border-gray-100">
-              <p className="text-xs text-gray-400">
-                {result.keywords.length} keywords · Scores are 1–100 (higher = more relevant)
-              </p>
+            {/* Keywords */}
+            <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+              <div className="px-5 py-3 border-b border-gray-100 bg-gray-50">
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Top Keywords</p>
+              </div>
+              <div className="px-5">
+                <div className="flex items-center justify-between py-3 border-b border-gray-100">
+                  <span className="text-xs font-medium text-gray-400 uppercase tracking-wide">Keyword</span>
+                  <span className="text-xs font-medium text-gray-400 uppercase tracking-wide">Relevance</span>
+                </div>
+                {result.keywords.map((kw) => (
+                  <KeywordRow key={kw.keyword} keyword={kw} />
+                ))}
+              </div>
+              <div className="px-5 py-3 bg-gray-50 border-t border-gray-100">
+                <p className="text-xs text-gray-400">
+                  Scores are 1–100 (higher = more relevant)
+                </p>
+              </div>
             </div>
           </div>
         )}

@@ -13,9 +13,18 @@ export interface Keyword {
 export interface ExtractResponse {
   keywords: Keyword[];
   pageTitle: string;
+  metaTitle: string;
+  metaDescription: string;
+  h1: string;
 }
 
-async function fetchPageText(url: string): Promise<{ title: string; text: string }> {
+async function fetchPageText(url: string): Promise<{
+  title: string;
+  metaTitle: string;
+  metaDescription: string;
+  h1: string;
+  text: string;
+}> {
   const res = await fetch(url, {
     headers: { "User-Agent": "Mozilla/5.0 (compatible; KeywordBot/1.0)" },
     signal: AbortSignal.timeout(10_000),
@@ -28,19 +37,22 @@ async function fetchPageText(url: string): Promise<{ title: string; text: string
   const html = await res.text();
   const $ = cheerio.load(html);
 
+  const metaTitle = $("title").first().text().trim();
+  const metaDescription = $('meta[name="description"]').attr("content")?.trim() ?? "";
+  const h1 = $("h1").first().text().trim();
+  const title = metaTitle || h1 || url;
+
   // Remove noise
   $("script, style, nav, footer, header, noscript, iframe, [aria-hidden='true']").remove();
-
-  const title = $("title").first().text().trim() || $("h1").first().text().trim() || url;
 
   // Gather meaningful text
   const text = $("body")
     .text()
     .replace(/\s+/g, " ")
     .trim()
-    .slice(0, 8000); // cap to avoid overly large prompts
+    .slice(0, 8000);
 
-  return { title, text };
+  return { title, metaTitle, metaDescription, h1, text };
 }
 
 export async function POST(req: NextRequest) {
@@ -63,9 +75,12 @@ export async function POST(req: NextRequest) {
   }
 
   let title: string;
+  let metaTitle: string;
+  let metaDescription: string;
+  let h1: string;
   let text: string;
   try {
-    ({ title, text } = await fetchPageText(url));
+    ({ title, metaTitle, metaDescription, h1, text } = await fetchPageText(url));
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     return NextResponse.json({ error: `Could not fetch page: ${message}` }, { status: 422 });
@@ -89,7 +104,7 @@ Return ONLY valid JSON in this exact shape:
 }
 
 Rules:
-- Return 8–12 keywords
+- Return exactly 5 keywords
 - Prefer specific, high-intent phrases over vague single words
 - relevance 90–100: core topic, extremely high intent
 - relevance 70–89: closely related, strong intent
@@ -118,7 +133,13 @@ Rules:
 
     // Strip markdown code fences if present
     const raw = textBlock.text.replace(/```(?:json)?\n?/g, "").trim();
-    const parsed: ExtractResponse = { ...JSON.parse(raw), pageTitle: title };
+    const parsed: ExtractResponse = {
+      ...JSON.parse(raw),
+      pageTitle: title,
+      metaTitle,
+      metaDescription,
+      h1,
+    };
 
     return NextResponse.json(parsed);
   } catch (err) {
