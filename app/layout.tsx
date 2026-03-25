@@ -2,8 +2,9 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Seed Keyword Extractor",
-  description: "Extract SEO seed keywords from any web page",
+  title: "RankForge — SEO Agency That Drives Real Results",
+  description:
+    "RankForge is a full-service SEO agency helping brands dominate search. Technical SEO, link building, content strategy, and more.",
 };
 
 export default function RootLayout({
