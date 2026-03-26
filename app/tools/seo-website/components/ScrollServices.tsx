@@ -2,6 +2,9 @@
 
 import { useEffect, useRef, useState } from "react";
 
+const STEPS = 6;
+const VH_PER_STEP = 0.85;
+
 const services = [
   {
     title: "Technical SEO",
@@ -15,15 +18,12 @@ const services = [
         <path d="M40 14 L40 20 M40 60 L40 66 M14 40 L20 40 M60 40 L66 40" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
       </svg>
     ),
-    bg: "#07090f",
-    accent: "#3b82f6",
-    accentLight: "#93c5fd",
-    stat: "47%",
-    statLabel: "of sites have critical crawl errors",
+    bg: "#07090f", accent: "#3b82f6", accentLight: "#93c5fd",
+    stat: "47%", statLabel: "of sites have critical crawl errors",
   },
   {
     title: "Link Building",
-    description: "White-hat authority building through digital PR, editorial placements, and strategic partnerships that move the needle on domain authority.",
+    description: "White-hat authority building through digital PR, editorial placements, and strategic partnerships that move domain authority.",
     icon: (
       <svg viewBox="0 0 80 80" fill="none" className="w-full h-full">
         <path d="M32 48 L20 60" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
@@ -33,11 +33,8 @@ const services = [
         <path d="M34 46 L46 34" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
       </svg>
     ),
-    bg: "#060e09",
-    accent: "#10b981",
-    accentLight: "#6ee7b7",
-    stat: "#1",
-    statLabel: "Google ranking factor is backlinks",
+    bg: "#060e09", accent: "#10b981", accentLight: "#6ee7b7",
+    stat: "#1", statLabel: "Google ranking factor is backlinks",
   },
   {
     title: "Content Strategy",
@@ -50,11 +47,8 @@ const services = [
         <path d="M53 57 L57 61 L63 53" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
       </svg>
     ),
-    bg: "#0d0a04",
-    accent: "#f59e0b",
-    accentLight: "#fcd34d",
-    stat: "55%",
-    statLabel: "more traffic for companies with active blogs",
+    bg: "#0d0a04", accent: "#f59e0b", accentLight: "#fcd34d",
+    stat: "55%", statLabel: "more traffic for companies with active blogs",
   },
   {
     title: "Local SEO",
@@ -66,15 +60,12 @@ const services = [
         <path d="M20 72 Q30 66 40 72 Q50 78 60 72" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" opacity="0.5" />
       </svg>
     ),
-    bg: "#0d0606",
-    accent: "#ef4444",
-    accentLight: "#fca5a5",
-    stat: "46%",
-    statLabel: "of all Google searches have local intent",
+    bg: "#0d0606", accent: "#ef4444", accentLight: "#fca5a5",
+    stat: "46%", statLabel: "of all Google searches have local intent",
   },
   {
     title: "Ecommerce SEO",
-    description: "Category page optimization, product schema markup, faceted navigation fixes, and merchant feed strategies for DTC and retail brands.",
+    description: "Category page optimization, product schema markup, faceted navigation fixes, and merchant feed strategies for DTC brands.",
     icon: (
       <svg viewBox="0 0 80 80" fill="none" className="w-full h-full">
         <path d="M12 18 L20 18 L28 52 L58 52 L66 28 L22 28" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
@@ -83,11 +74,8 @@ const services = [
         <path d="M40 28 L40 46 M33 37 L47 37" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
       </svg>
     ),
-    bg: "#08060e",
-    accent: "#8b5cf6",
-    accentLight: "#c4b5fd",
-    stat: "53%",
-    statLabel: "of ecommerce traffic comes from organic search",
+    bg: "#08060e", accent: "#8b5cf6", accentLight: "#c4b5fd",
+    stat: "53%", statLabel: "of ecommerce traffic comes from organic search",
   },
   {
     title: "SEO Analytics",
@@ -106,31 +94,43 @@ const services = [
         <rect x="58" y="26" width="8" height="34" rx="1.5" fill="currentColor" fillOpacity="0.4" />
       </svg>
     ),
-    bg: "#04100e",
-    accent: "#06b6d4",
-    accentLight: "#67e8f9",
-    stat: "6×",
-    statLabel: "better ROI from data-driven SEO programs",
+    bg: "#04100e", accent: "#06b6d4", accentLight: "#67e8f9",
+    stat: "6×", statLabel: "better ROI from data-driven SEO programs",
   },
 ];
 
 export default function ScrollServices() {
   const containerRef = useRef<HTMLDivElement>(null);
+  const stickyRef = useRef<HTMLDivElement>(null);
   const [activeIndex, setActiveIndex] = useState(0);
   const [contentVisible, setContentVisible] = useState(true);
+
+  // Set exact pixel heights from window.innerHeight so scroll math
+  // is perfectly aligned on every device (avoids mobile vh issues).
+  useEffect(() => {
+    const setHeights = () => {
+      const h = window.innerHeight;
+      if (containerRef.current) containerRef.current.style.height = `${h * STEPS * VH_PER_STEP}px`;
+      if (stickyRef.current) stickyRef.current.style.height = `${h}px`;
+    };
+    setHeights();
+    window.addEventListener("resize", setHeights);
+    return () => window.removeEventListener("resize", setHeights);
+  }, []);
 
   useEffect(() => {
     const handleScroll = () => {
       if (!containerRef.current) return;
       const rect = containerRef.current.getBoundingClientRect();
-      const total = rect.height - window.innerHeight;
+      const h = window.innerHeight;
+      const total = rect.height - h;
       const scrolled = -rect.top;
       const pct = Math.max(0, Math.min(1, scrolled / total));
-      const rawIndex = pct * services.length;
-      const index = Math.min(services.length - 1, Math.floor(rawIndex));
-      const within = rawIndex - index;
+      const raw = pct * STEPS;
+      const index = Math.min(STEPS - 1, Math.floor(raw));
+      const within = raw - index;
       setActiveIndex(index);
-      setContentVisible(within < 0.82 || index === services.length - 1);
+      setContentVisible(within < 0.82 || index === STEPS - 1);
     };
     window.addEventListener("scroll", handleScroll, { passive: true });
     handleScroll();
@@ -140,19 +140,17 @@ export default function ScrollServices() {
   const s = services[activeIndex];
 
   return (
-    <div ref={containerRef} style={{ height: `${services.length * 80}vh` }} className="relative">
+    <div ref={containerRef} className="relative">
       <div
-        className="sticky top-0 h-screen overflow-hidden flex flex-col transition-colors duration-700"
+        ref={stickyRef}
+        className="sticky top-0 overflow-hidden flex flex-col transition-colors duration-700"
         style={{ backgroundColor: s.bg }}
       >
-        {/* Ambient glow */}
-        <div
-          className="absolute inset-0 pointer-events-none transition-all duration-700"
-          style={{ background: `radial-gradient(ellipse at 65% 60%, ${s.accent}18 0%, transparent 65%)` }}
-        />
+        <div className="absolute inset-0 pointer-events-none transition-all duration-700"
+          style={{ background: `radial-gradient(ellipse at 65% 60%, ${s.accent}18 0%, transparent 65%)` }} />
 
-        {/* ── PERSISTENT HEADER ── */}
-        <div className="relative z-10 flex-shrink-0 pt-8 pb-5 px-6 md:px-12 border-b border-white/5">
+        {/* Persistent header */}
+        <div className="relative z-10 flex-shrink-0 pt-7 pb-5 px-6 md:px-12 border-b border-white/5">
           <div className="max-w-7xl mx-auto flex items-end justify-between gap-6">
             <div>
               <p className="text-xs font-semibold uppercase tracking-widest mb-1.5 transition-colors duration-500" style={{ color: s.accent }}>
@@ -162,77 +160,53 @@ export default function ScrollServices() {
                 Everything your SEO needs, nothing it doesn&apos;t
               </h2>
             </div>
-            {/* Step dots */}
             <div className="hidden md:flex items-center gap-2 flex-shrink-0 pb-1">
               {services.map((_, i) => (
-                <div
-                  key={i}
-                  className="rounded-full transition-all duration-400"
+                <div key={i} className="rounded-full transition-all duration-400"
                   style={{
-                    width: i === activeIndex ? "20px" : "6px",
-                    height: "6px",
+                    width: i === activeIndex ? "20px" : "6px", height: "6px",
                     backgroundColor: i === activeIndex ? s.accent : i < activeIndex ? `${s.accent}50` : "rgba(255,255,255,0.12)",
-                  }}
-                />
+                  }} />
               ))}
             </div>
           </div>
         </div>
 
-        {/* ── CHANGING CONTENT ── */}
+        {/* Changing content */}
         <div className="relative z-10 flex-1 flex items-center px-6 md:px-12 overflow-hidden">
-          <div
-            className="max-w-7xl mx-auto w-full grid grid-cols-1 lg:grid-cols-2 gap-12 items-center transition-all duration-500"
-            style={{ opacity: contentVisible ? 1 : 0, transform: contentVisible ? "translateY(0)" : "translateY(18px)" }}
-          >
-            {/* Left */}
+          <div className="max-w-7xl mx-auto w-full grid grid-cols-1 lg:grid-cols-2 gap-12 items-center transition-all duration-500"
+            style={{ opacity: contentVisible ? 1 : 0, transform: contentVisible ? "translateY(0)" : "translateY(18px)" }}>
             <div>
               <p className="text-sm font-bold uppercase tracking-widest mb-4 transition-colors duration-500" style={{ color: s.accent }}>
-                {String(activeIndex + 1).padStart(2, "0")} / {String(services.length).padStart(2, "0")}
+                {String(activeIndex + 1).padStart(2, "0")} / {String(STEPS).padStart(2, "0")}
               </p>
-              <h3 className="text-5xl md:text-6xl font-extrabold text-white tracking-tight leading-none mb-5">
-                {s.title}
-              </h3>
-              <p className="text-zinc-300 text-base md:text-lg leading-relaxed mb-8 max-w-md">
-                {s.description}
-              </p>
-              <div
-                className="inline-flex items-baseline gap-3 px-5 py-3 rounded-xl border"
-                style={{ borderColor: `${s.accent}35`, backgroundColor: `${s.accent}0e` }}
-              >
+              <h3 className="text-5xl md:text-6xl font-extrabold text-white tracking-tight leading-none mb-5">{s.title}</h3>
+              <p className="text-zinc-300 text-base md:text-lg leading-relaxed mb-8 max-w-md">{s.description}</p>
+              <div className="inline-flex items-baseline gap-3 px-5 py-3 rounded-xl border"
+                style={{ borderColor: `${s.accent}35`, backgroundColor: `${s.accent}0e` }}>
                 <span className="text-3xl font-extrabold" style={{ color: s.accentLight }}>{s.stat}</span>
                 <span className="text-zinc-400 text-sm">{s.statLabel}</span>
               </div>
             </div>
-
-            {/* Right: icon */}
             <div className="hidden lg:flex items-center justify-center">
-              <div
-                className="flex items-center justify-center rounded-full transition-all duration-700"
+              <div className="flex items-center justify-center rounded-full transition-all duration-700"
                 style={{
-                  width: 300,
-                  height: 300,
+                  width: 280, height: 280, padding: "56px",
                   background: `radial-gradient(circle, ${s.accent}12 0%, transparent 70%)`,
-                  border: `1px solid ${s.accent}18`,
-                  color: s.accent,
-                  padding: "60px",
-                }}
-              >
+                  border: `1px solid ${s.accent}18`, color: s.accent,
+                }}>
                 {s.icon}
               </div>
             </div>
           </div>
         </div>
 
-        {/* Progress bar */}
-        <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-white/5">
-          <div
-            className="h-full transition-all duration-150"
-            style={{
-              width: `${((activeIndex / services.length) + (1 / services.length)) * 100}%`,
-              backgroundColor: s.accent,
-            }}
-          />
+        {/* Progress */}
+        <div className="absolute bottom-0 left-0 right-0 h-px bg-white/5">
+          <div className="h-full transition-all duration-150" style={{
+            width: `${((activeIndex + 1) / STEPS) * 100}%`,
+            backgroundColor: s.accent,
+          }} />
         </div>
       </div>
     </div>

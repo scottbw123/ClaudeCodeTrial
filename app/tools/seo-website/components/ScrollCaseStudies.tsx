@@ -2,189 +2,235 @@
 
 import { useEffect, useRef, useState } from "react";
 
+const CASES = 3;
+const VH_PER_CASE = 1.1;
+
 const cases = [
   {
     company: "SaaS Platform",
     industry: "B2B Software",
-    metric: "+412%",
-    metricSub: "Organic Traffic",
-    period: "6 months",
+    headline: "+412%",
+    headlineSub: "Organic Traffic",
+    period: "Over 6 months",
     accent: "#3b82f6",
     accentLight: "#93c5fd",
-    bg: "#070a10",
-    results: [
-      { label: "Rebuilt site architecture end-to-end", type: "arch" },
-      { label: "Fixed 1,200+ critical crawl errors", type: "fix" },
-      { label: "Published 80 pillar content pieces", type: "content" },
-      { label: "Domain authority increased +22 pts", type: "authority" },
-      { label: "Ranked #1 for 34 target keywords", type: "rank" },
+    bg: "#070a12",
+    secondaryStats: [
+      { value: "+22", label: "Domain authority" },
+      { value: "34", label: "Keywords at #1" },
+      { value: "80", label: "Content pieces" },
+      { value: "1,200+", label: "Issues fixed" },
     ],
-    chartPoints: "0,55 16,48 32,42 48,34 64,22 80,14 96,6 112,2",
+    results: [
+      "Full technical crawl — 1,200+ errors resolved in sprint one",
+      "Site architecture rebuilt for topical authority",
+      "80 pillar and cluster content pieces shipped",
+      "34 target keywords now holding position #1",
+      "Domain authority climbed 22 points in 6 months",
+    ],
+    // Normalized chart data: [month, normalized_value_0_to_1]
+    chartData: [0, 0.07, 0.16, 0.30, 0.52, 0.75, 1.0],
+    chartLabels: ["M1", "M2", "M3", "M4", "M5", "M6"],
+    chartYLabels: ["100%", "75%", "50%", "25%", "0%"],
   },
   {
     company: "DTC Brand",
     industry: "Ecommerce",
-    metric: "3.8×",
-    metricSub: "Organic Revenue",
-    period: "12 months",
+    headline: "3.8×",
+    headlineSub: "Organic Revenue",
+    period: "Over 12 months",
     accent: "#06b6d4",
     accentLight: "#67e8f9",
-    bg: "#04100e",
-    results: [
-      { label: "Category page SEO overhaul", type: "arch" },
-      { label: "140 editorial backlinks acquired", type: "authority" },
-      { label: "Product schema markup deployed", type: "fix" },
-      { label: "Average position improved 14 spots", type: "rank" },
-      { label: "Cart abandonment reduced via CRO", type: "content" },
+    bg: "#04100f",
+    secondaryStats: [
+      { value: "140", label: "Backlinks built" },
+      { value: "−14", label: "Avg. rank change" },
+      { value: "62%", label: "More sessions" },
+      { value: "3.8×", label: "Revenue lift" },
     ],
-    chartPoints: "0,58 16,52 32,46 48,36 64,28 80,18 96,10 112,4",
+    results: [
+      "Category page architecture overhauled site-wide",
+      "140 editorial backlinks placed in 12 months",
+      "Product schema markup deployed across 4,000 SKUs",
+      "Average SERP position improved by 14 spots",
+      "Cart abandonment reduced through CRO layer",
+    ],
+    chartData: [0, 0.05, 0.13, 0.24, 0.38, 0.55, 0.70, 0.83, 0.93, 1.0],
+    chartLabels: ["Q1", "Q2", "Q3", "Q4"],
+    chartYLabels: ["3.8×", "3×", "2×", "1×"],
   },
   {
-    company: "Law Firm",
+    company: "Regional Law Firm",
     industry: "Professional Services",
-    metric: "#1",
-    metricSub: "Local Pack",
-    period: "In 12 cities",
+    headline: "#1",
+    headlineSub: "Local Pack",
+    period: "In 12 target cities",
     accent: "#8b5cf6",
     accentLight: "#c4b5fd",
     bg: "#09060f",
-    results: [
-      { label: "Full citation cleanup across 80+ dirs", type: "fix" },
-      { label: "Google Business Profile optimized", type: "arch" },
-      { label: "Geo-targeted content for each city", type: "content" },
-      { label: "Review velocity strategy launched", type: "rank" },
-      { label: "Local backlinks from 38 publications", type: "authority" },
+    secondaryStats: [
+      { value: "12", label: "Cities ranking #1" },
+      { value: "80+", label: "Citations cleaned" },
+      { value: "38", label: "Local backlinks" },
+      { value: "4.9★", label: "Avg. review score" },
     ],
-    chartPoints: "0,60 16,54 32,46 48,38 64,28 80,18 96,8 112,3",
+    results: [
+      "Citation cleanup across 80+ directories nationwide",
+      "Google Business Profile fully optimized per city",
+      "Geo-targeted landing pages built for each market",
+      "Review velocity strategy launched — 4.9★ average",
+      "38 local editorial backlinks placed in 6 months",
+    ],
+    chartData: [0, 0.06, 0.15, 0.30, 0.50, 0.73, 0.90, 1.0],
+    chartLabels: ["M1", "M2", "M3", "M4", "M5", "M6"],
+    chartYLabels: ["12", "9", "6", "3", "0"],
   },
 ];
 
-function BarChart({ accent, points }: { accent: string; points: string }) {
+function GrowthChart({ data, labels, accent, accentLight }: {
+  data: number[];
+  labels: string[];
+  accent: string;
+  accentLight: string;
+}) {
+  const W = 400;
+  const H = 180;
+  const PAD = { top: 16, right: 12, bottom: 28, left: 8 };
+  const chartW = W - PAD.left - PAD.right;
+  const chartH = H - PAD.top - PAD.bottom;
+
+  const pts = data.map((v, i) => ({
+    x: PAD.left + (i / (data.length - 1)) * chartW,
+    y: PAD.top + (1 - v) * chartH,
+  }));
+
+  const linePath = pts.map((p, i) => `${i === 0 ? "M" : "L"}${p.x},${p.y}`).join(" ");
+  const areaPath = `${linePath} L${pts[pts.length - 1].x},${H - PAD.bottom} L${pts[0].x},${H - PAD.bottom} Z`;
+
+  // X label positions (evenly spaced)
+  const xLabelPositions = labels.map((_, i) =>
+    PAD.left + (i / (labels.length - 1)) * chartW
+  );
+
+  const gradId = `cg-${accent.replace("#", "")}`;
+
   return (
-    <svg viewBox="0 0 120 70" fill="none" className="w-full h-full">
+    <svg viewBox={`0 0 ${W} ${H}`} fill="none" className="w-full h-full" preserveAspectRatio="none">
       <defs>
-        <linearGradient id={`grad-${accent.replace("#", "")}`} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor={accent} stopOpacity="0.4" />
-          <stop offset="100%" stopColor={accent} stopOpacity="0" />
+        <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor={accent} stopOpacity="0.35" />
+          <stop offset="100%" stopColor={accent} stopOpacity="0.02" />
         </linearGradient>
       </defs>
-      {/* Grid lines */}
-      {[15, 30, 45, 60].map((y) => (
-        <line key={y} x1="0" y1={y} x2="120" y2={y} stroke="white" strokeOpacity="0.04" strokeWidth="0.5" />
-      ))}
-      {/* Area fill */}
-      <polygon
-        points={`0,55 ${points} 112,65 0,65`}
-        fill={`url(#grad-${accent.replace("#", "")})`}
-      />
-      {/* Line */}
-      <polyline points={points} stroke={accent} strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round" />
-      {/* Dots */}
-      {points.split(" ").map((pt, i) => {
-        const [x, y] = pt.split(",");
-        return <circle key={i} cx={x} cy={y} r="2.5" fill={accent} />;
+
+      {/* Horizontal grid lines */}
+      {[0, 0.25, 0.5, 0.75, 1].map((v) => {
+        const y = PAD.top + (1 - v) * chartH;
+        return (
+          <line key={v} x1={PAD.left} y1={y} x2={W - PAD.right} y2={y}
+            stroke="white" strokeOpacity="0.05" strokeWidth="0.5" />
+        );
       })}
+
+      {/* Area */}
+      <path d={areaPath} fill={`url(#${gradId})`} />
+
+      {/* Line */}
+      <path d={linePath} stroke={accent} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+
+      {/* Data points */}
+      {pts.map((p, i) => (
+        <circle key={i} cx={p.x} cy={p.y} r="3" fill={accentLight} stroke="#000" strokeWidth="1" />
+      ))}
+
+      {/* X axis labels */}
+      {xLabelPositions.map((x, i) => (
+        <text key={i} x={x} y={H - 6} textAnchor="middle" fontSize="10" fill="rgba(255,255,255,0.3)">
+          {labels[i]}
+        </text>
+      ))}
+
+      {/* Baseline */}
+      <line x1={PAD.left} y1={H - PAD.bottom} x2={W - PAD.right} y2={H - PAD.bottom}
+        stroke="white" strokeOpacity="0.08" strokeWidth="0.5" />
     </svg>
   );
 }
 
-function ResultIcon({ type, color }: { type: string; color: string }) {
-  const icons: Record<string, JSX.Element> = {
-    arch: (
-      <svg viewBox="0 0 16 16" fill="none" className="w-4 h-4 flex-shrink-0">
-        <rect x="1" y="5" width="14" height="9" rx="1.5" stroke={color} strokeWidth="1.2" />
-        <path d="M5 5 V3 Q8 1 11 3 V5" stroke={color} strokeWidth="1.2" strokeLinejoin="round" />
-      </svg>
-    ),
-    fix: (
-      <svg viewBox="0 0 16 16" fill="none" className="w-4 h-4 flex-shrink-0">
-        <path d="M8 2 L8 14 M2 8 L14 8" stroke={color} strokeWidth="1.5" strokeLinecap="round" opacity="0.5" />
-        <circle cx="8" cy="8" r="5" stroke={color} strokeWidth="1.2" />
-        <circle cx="8" cy="8" r="2" fill={color} />
-      </svg>
-    ),
-    content: (
-      <svg viewBox="0 0 16 16" fill="none" className="w-4 h-4 flex-shrink-0">
-        <rect x="2" y="2" width="12" height="12" rx="2" stroke={color} strokeWidth="1.2" />
-        <path d="M5 6 L11 6 M5 9 L9 9" stroke={color} strokeWidth="1.2" strokeLinecap="round" />
-      </svg>
-    ),
-    authority: (
-      <svg viewBox="0 0 16 16" fill="none" className="w-4 h-4 flex-shrink-0">
-        <path d="M8 2 L9.8 6.8 L15 6.8 L10.6 9.8 L12.4 14.5 L8 11.5 L3.6 14.5 L5.4 9.8 L1 6.8 L6.2 6.8 Z" stroke={color} strokeWidth="1.2" strokeLinejoin="round" />
-      </svg>
-    ),
-    rank: (
-      <svg viewBox="0 0 16 16" fill="none" className="w-4 h-4 flex-shrink-0">
-        <path d="M2 12 L5 8 L8 10 L11 5 L14 2" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-        <path d="M11 2 L14 2 L14 5" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-      </svg>
-    ),
-  };
-  return icons[type] ?? icons.rank;
-}
-
 export default function ScrollCaseStudies() {
   const containerRef = useRef<HTMLDivElement>(null);
-  const [activeIndex, setActiveIndex] = useState(0);
-  const [rightVisible, setRightVisible] = useState(true);
-  const [leftOffset, setLeftOffset] = useState(0);
+  const stickyRef = useRef<HTMLDivElement>(null);
+  const [displayIndex, setDisplayIndex] = useState(0);
+  const [visible, setVisible] = useState(true);
+  const pendingIndex = useRef(0);
 
   useEffect(() => {
+    const setHeights = () => {
+      const h = window.innerHeight;
+      if (containerRef.current) containerRef.current.style.height = `${h * CASES * VH_PER_CASE}px`;
+      if (stickyRef.current) stickyRef.current.style.height = `${h}px`;
+    };
+    setHeights();
+    window.addEventListener("resize", setHeights);
+    return () => window.removeEventListener("resize", setHeights);
+  }, []);
+
+  useEffect(() => {
+    let fadeTimer: ReturnType<typeof setTimeout>;
+
     const handleScroll = () => {
       if (!containerRef.current) return;
       const rect = containerRef.current.getBoundingClientRect();
-      const total = rect.height - window.innerHeight;
+      const h = window.innerHeight;
+      const total = rect.height - h;
       const scrolled = -rect.top;
       const pct = Math.max(0, Math.min(1, scrolled / total));
-      const rawIndex = pct * cases.length;
-      const index = Math.min(cases.length - 1, Math.floor(rawIndex));
-      const within = rawIndex - index;
+      const raw = pct * CASES;
+      const index = Math.min(CASES - 1, Math.floor(raw));
 
-      setActiveIndex(index);
-      // Left slot: offset by full index (each case = 100% height)
-      setLeftOffset(rawIndex);
-      // Right fades out near end of each case
-      setRightVisible(within < 0.8 || index === cases.length - 1);
+      if (index !== pendingIndex.current) {
+        pendingIndex.current = index;
+        setVisible(false);
+        clearTimeout(fadeTimer);
+        fadeTimer = setTimeout(() => {
+          setDisplayIndex(index);
+          setVisible(true);
+        }, 320);
+      }
     };
+
     window.addEventListener("scroll", handleScroll, { passive: true });
     handleScroll();
-    return () => window.removeEventListener("scroll", handleScroll);
+    return () => {
+      window.removeEventListener("scroll", handleScroll);
+      clearTimeout(fadeTimer);
+    };
   }, []);
 
-  const current = cases[activeIndex];
+  const c = cases[displayIndex];
 
   return (
-    <div ref={containerRef} style={{ height: `${cases.length * 100}vh` }} className="relative">
-      <div
-        className="sticky top-0 h-screen overflow-hidden flex flex-col transition-colors duration-700"
-        style={{ backgroundColor: current.bg }}
-      >
+    <div ref={containerRef} className="relative">
+      <div ref={stickyRef} className="sticky top-0 overflow-hidden flex flex-col transition-colors duration-500"
+        style={{ backgroundColor: c.bg }}>
+
         {/* Ambient glow */}
-        <div
-          className="absolute inset-0 pointer-events-none transition-all duration-700"
-          style={{ background: `radial-gradient(ellipse at 30% 55%, ${current.accent}14 0%, transparent 60%)` }}
-        />
+        <div className="absolute inset-0 pointer-events-none transition-all duration-700"
+          style={{ background: `radial-gradient(ellipse at 25% 60%, ${c.accent}12 0%, transparent 60%)` }} />
 
         {/* Section header */}
-        <div className="relative z-10 flex-shrink-0 pt-8 pb-5 px-6 md:px-12 border-b border-white/5">
+        <div className="relative z-10 flex-shrink-0 pt-7 pb-5 px-6 md:px-12 border-b border-white/5">
           <div className="max-w-7xl mx-auto flex items-end justify-between">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-widest mb-1" style={{ color: current.accent }}>
+              <p className="text-xs font-semibold uppercase tracking-widest mb-1.5 transition-colors duration-500" style={{ color: c.accent }}>
                 Case Studies
               </p>
-              <h2 className="text-2xl md:text-3xl font-extrabold text-white tracking-tight">
-                Real results, real companies
-              </h2>
+              <h2 className="text-2xl md:text-3xl font-extrabold text-white tracking-tight">Real results, real companies</h2>
             </div>
-            {/* Case indicators */}
             <div className="hidden md:flex items-center gap-3 pb-1">
-              {cases.map((c, i) => (
-                <div
-                  key={i}
-                  className="text-xs font-semibold transition-colors duration-300"
-                  style={{ color: i === activeIndex ? current.accent : i < activeIndex ? "rgba(255,255,255,0.25)" : "#3f3f46" }}
-                >
+              {cases.map((_, i) => (
+                <div key={i} className="text-xs font-bold transition-all duration-400 px-1"
+                  style={{ color: i === displayIndex ? c.accent : i < displayIndex ? "rgba(255,255,255,0.2)" : "#3f3f46" }}>
                   {String(i + 1).padStart(2, "0")}
                 </div>
               ))}
@@ -192,97 +238,85 @@ export default function ScrollCaseStudies() {
           </div>
         </div>
 
-        {/* Main grid */}
-        <div className="relative z-10 flex-1 grid grid-cols-1 lg:grid-cols-[45%_55%] overflow-hidden">
+        {/* Content grid */}
+        <div
+          className="relative z-10 flex-1 grid grid-cols-1 lg:grid-cols-[42%_58%] min-h-0 transition-all duration-350"
+          style={{ opacity: visible ? 1 : 0, transform: visible ? "translateY(0)" : "translateY(10px)" }}
+        >
+          {/* LEFT — metrics */}
+          <div className="flex flex-col justify-center px-8 md:px-12 border-r border-white/5 py-6 overflow-hidden">
+            <div className="mb-3">
+              <span className="text-xs font-semibold uppercase tracking-widest" style={{ color: c.accent }}>{c.company}</span>
+              <span className="text-zinc-600 text-xs mx-2">·</span>
+              <span className="text-zinc-500 text-xs">{c.industry}</span>
+            </div>
 
-          {/* LEFT — slot machine metric */}
-          <div className="relative overflow-hidden border-r border-white/5 flex flex-col justify-center px-8 md:px-12">
-            <div
-              className="transition-transform duration-500 ease-out"
-              style={{ transform: `translateY(-${leftOffset * (100 / cases.length)}%)`, height: `${cases.length * 100}%` }}
-            >
-              {cases.map((c) => (
-                <div
-                  key={c.company}
-                  className="flex flex-col justify-center"
-                  style={{ height: `${100 / cases.length}%` }}
-                >
-                  <div className="text-sm font-semibold mb-1" style={{ color: c.accent }}>
-                    {c.company} · {c.industry}
-                  </div>
-                  <div
-                    className="font-extrabold leading-none tracking-tighter mb-2"
-                    style={{
-                      fontSize: "clamp(4rem, 10vw, 7.5rem)",
-                      color: c.accentLight,
-                    }}
-                  >
-                    {c.metric}
-                  </div>
-                  <div className="text-white text-xl font-bold mb-1">{c.metricSub}</div>
-                  <div className="text-zinc-500 text-sm">{c.period}</div>
+            {/* Primary metric */}
+            <div className="mb-2">
+              <div className="font-extrabold leading-none tracking-tighter"
+                style={{ fontSize: "clamp(4.5rem, 9vw, 7rem)", color: c.accentLight }}>
+                {c.headline}
+              </div>
+              <div className="text-white text-lg font-bold mt-1">{c.headlineSub}</div>
+              <div className="text-zinc-500 text-sm mt-0.5">{c.period}</div>
+            </div>
 
-                  {/* Mini chart */}
-                  <div className="mt-6 w-full max-w-[200px]" style={{ height: "60px" }}>
-                    <BarChart accent={c.accent} points={c.chartPoints} />
-                  </div>
-                  <div className="mt-1 text-xs text-zinc-600">Organic traffic trend</div>
+            {/* Divider */}
+            <div className="my-5 h-px" style={{ backgroundColor: `${c.accent}20` }} />
+
+            {/* Secondary stats grid */}
+            <div className="grid grid-cols-2 gap-3">
+              {c.secondaryStats.map((s) => (
+                <div key={s.label} className="rounded-lg px-3 py-3 border"
+                  style={{ backgroundColor: `${c.accent}08`, borderColor: `${c.accent}18` }}>
+                  <div className="text-xl font-extrabold leading-none" style={{ color: c.accentLight }}>{s.value}</div>
+                  <div className="text-zinc-500 text-xs mt-1 leading-tight">{s.label}</div>
                 </div>
               ))}
             </div>
           </div>
 
-          {/* RIGHT — results list, fades */}
-          <div
-            className="flex flex-col justify-center px-8 md:px-12 transition-all duration-400"
-            style={{ opacity: rightVisible ? 1 : 0, transform: rightVisible ? "translateY(0)" : "translateY(12px)" }}
-          >
-            <p className="text-xs font-semibold uppercase tracking-widest mb-6" style={{ color: current.accent }}>
-              What we delivered
-            </p>
-            <ul className="space-y-5">
-              {current.results.map((r, i) => (
-                <li
-                  key={r.label}
-                  className="flex items-start gap-4"
-                  style={{
-                    opacity: rightVisible ? 1 : 0,
-                    transform: rightVisible ? "translateX(0)" : "translateX(12px)",
-                    transition: `opacity 0.4s ease ${i * 60}ms, transform 0.4s ease ${i * 60}ms`,
-                  }}
-                >
-                  <ResultIcon type={r.type} color={current.accent} />
-                  <span className="text-zinc-200 text-sm leading-relaxed">{r.label}</span>
-                </li>
-              ))}
-            </ul>
+          {/* RIGHT — chart + results */}
+          <div className="flex flex-col px-8 md:px-10 py-6 min-h-0 overflow-hidden">
+            {/* Chart */}
+            <div className="flex-1 min-h-0 flex flex-col">
+              <div className="flex items-center justify-between mb-3 flex-shrink-0">
+                <span className="text-xs font-semibold uppercase tracking-widest text-zinc-500">Growth trend</span>
+                <span className="text-xs text-zinc-600">{c.period}</span>
+              </div>
+              <div className="flex-1 min-h-0 rounded-xl overflow-hidden border border-white/5"
+                style={{ backgroundColor: `${c.accent}06` }}>
+                <GrowthChart data={c.chartData} labels={c.chartLabels} accent={c.accent} accentLight={c.accentLight} />
+              </div>
+            </div>
 
-            {/* Large decorative bar chart */}
-            <div
-              className="mt-10 rounded-xl p-4 border border-white/5"
-              style={{ backgroundColor: `${current.accent}08`, width: "100%", maxWidth: "320px" }}
-            >
-              <div className="text-xs text-zinc-500 mb-3">Monthly organic sessions</div>
-              <div style={{ height: "70px" }}>
-                <BarChart accent={current.accent} points={current.chartPoints} />
-              </div>
-              <div className="flex justify-between mt-2 text-xs text-zinc-600">
-                <span>Month 1</span>
-                <span>Month 6</span>
-              </div>
+            {/* Divider */}
+            <div className="my-4 h-px flex-shrink-0" style={{ backgroundColor: `${c.accent}15` }} />
+
+            {/* Results */}
+            <div className="flex-shrink-0">
+              <p className="text-xs font-semibold uppercase tracking-widest mb-3" style={{ color: c.accent }}>
+                What we delivered
+              </p>
+              <ul className="space-y-2.5">
+                {c.results.map((r, i) => (
+                  <li key={i} className="flex items-start gap-3">
+                    <svg className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24"
+                      stroke={c.accent} strokeWidth={2.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                    </svg>
+                    <span className="text-zinc-300 text-sm leading-snug">{r}</span>
+                  </li>
+                ))}
+              </ul>
             </div>
           </div>
         </div>
 
-        {/* Progress bar */}
-        <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-white/5">
-          <div
-            className="h-full transition-all duration-150"
-            style={{
-              width: `${((activeIndex / cases.length) + (1 / cases.length)) * 100}%`,
-              backgroundColor: current.accent,
-            }}
-          />
+        {/* Progress */}
+        <div className="absolute bottom-0 left-0 right-0 h-px bg-white/5">
+          <div className="h-full transition-all duration-300"
+            style={{ width: `${((displayIndex + 1) / CASES) * 100}%`, backgroundColor: c.accent }} />
         </div>
       </div>
     </div>
