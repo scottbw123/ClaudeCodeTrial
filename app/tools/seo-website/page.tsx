@@ -1,6 +1,8 @@
 import Link from "next/link";
 import ScrollServices from "./components/ScrollServices";
 import ScrollProcess from "./components/ScrollProcess";
+import ScrollCaseStudies from "./components/ScrollCaseStudies";
+import ScrollTestimonials from "./components/ScrollTestimonials";
 
 export default function SEOWebsite() {
   return (
@@ -19,17 +21,16 @@ export default function SEOWebsite() {
 
       {/* NAV */}
       <header className="sticky top-0 z-40 border-b border-white/5 bg-[#07080d]/85 backdrop-blur-md">
-        <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
-          {/* Logo */}
+        <div className="max-w-7xl mx-auto px-6 h-14 flex items-center justify-between">
           <a href="#" className="flex items-center">
             <img
               src="https://images.squarespace-cdn.com/content/v1/62ed6ed258fee028614389d2/b303dd3c-b649-439a-9f9a-d46695714210/Omni+Enterprises+Group+2.png?format=1500w"
               alt="OmniFlow Digital"
-              className="h-8 w-auto object-contain"
+              className="h-6 w-auto object-contain"
               style={{ filter: "brightness(0) invert(1)" }}
             />
           </a>
-          <nav className="hidden md:flex items-center gap-8 text-sm text-zinc-400">
+          <nav className="hidden md:flex items-center gap-7 text-sm text-zinc-400">
             <a href="#services" className="hover:text-white transition-colors">Services</a>
             <a href="#process" className="hover:text-white transition-colors">Process</a>
             <a href="#results" className="hover:text-white transition-colors">Results</a>
@@ -38,18 +39,19 @@ export default function SEOWebsite() {
           </nav>
           <a
             href="#contact"
-            className="bg-[#1d4ed8] hover:bg-[#2563eb] transition-colors text-white text-sm font-semibold px-4 py-2 rounded-lg"
+            className="text-white text-sm font-semibold px-4 py-2 rounded-lg transition-all hover:opacity-90"
+            style={{ background: "linear-gradient(135deg, #1d4ed8 0%, #0891b2 100%)" }}
           >
-            Get a Free Audit
+            Free Audit
           </a>
         </div>
       </header>
 
       <main>
         {/* HERO */}
-        <section className="pt-36 pb-28 px-6 relative overflow-hidden bg-[#07080d]">
+        <section className="pt-32 pb-24 px-6 relative overflow-hidden bg-[#07080d]">
           <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[900px] h-[600px] pointer-events-none"
-            style={{ background: "radial-gradient(ellipse at center, rgba(29,78,216,0.15) 0%, transparent 65%)" }} />
+            style={{ background: "radial-gradient(ellipse at center, rgba(29,78,216,0.14) 0%, transparent 65%)" }} />
           <div className="absolute top-1/3 left-1/4 w-[400px] h-[400px] pointer-events-none"
             style={{ background: "radial-gradient(ellipse at center, rgba(6,182,212,0.07) 0%, transparent 65%)" }} />
 
@@ -71,7 +73,7 @@ export default function SEOWebsite() {
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <a href="#contact"
-                className="text-white font-semibold px-7 py-3.5 rounded-xl text-base transition-all"
+                className="text-white font-semibold px-7 py-3.5 rounded-xl text-base transition-all hover:opacity-90"
                 style={{ background: "linear-gradient(135deg, #1d4ed8 0%, #0891b2 100%)" }}>
                 Get a Free SEO Audit
               </a>
@@ -100,9 +102,9 @@ export default function SEOWebsite() {
         </section>
 
         {/* TRUSTED BY */}
-        <section className="py-16 px-6 border-y border-white/5 bg-[#07080d]">
+        <section className="py-14 px-6 border-y border-white/5 bg-[#07080d]">
           <div className="max-w-5xl mx-auto text-center">
-            <p className="text-zinc-600 text-xs uppercase tracking-widest mb-10">Trusted by teams at</p>
+            <p className="text-zinc-600 text-xs uppercase tracking-widest mb-8">Trusted by teams at</p>
             <div className="flex flex-wrap justify-center gap-10 items-center">
               {["Vercel", "Linear", "Stripe", "Notion", "Loom", "Figma", "Retool"].map((brand) => (
                 <span key={brand} className="text-zinc-500 font-semibold text-lg tracking-tight hover:text-zinc-300 transition-colors">
@@ -113,99 +115,24 @@ export default function SEOWebsite() {
           </div>
         </section>
 
-        {/* SERVICES — scroll section */}
+        {/* SERVICES — sticky scroll */}
         <section id="services">
-          <div className="max-w-7xl mx-auto px-6 py-20">
-            <div className="mb-4">
-              <p className="text-[#60a5fa] text-sm font-semibold uppercase tracking-widest mb-3">Services</p>
-              <h2 className="text-4xl md:text-5xl font-extrabold tracking-tight leading-tight mb-3">
-                Everything your SEO needs
-              </h2>
-              <p className="text-zinc-400 text-lg">Scroll to explore each service.</p>
-            </div>
-          </div>
           <ScrollServices />
         </section>
 
-        {/* PROCESS — scroll section */}
+        {/* PROCESS — sticky scroll */}
         <section id="process">
-          <div className="max-w-7xl mx-auto px-6 pt-20 pb-4 bg-[#09090b]">
-            <p className="text-zinc-400 text-sm font-semibold uppercase tracking-widest mb-3">How it works</p>
-            <h2 className="text-4xl md:text-5xl font-extrabold tracking-tight leading-tight">
-              From audit to #1 in 90 days
-            </h2>
-          </div>
           <ScrollProcess />
         </section>
 
-        {/* RESULTS */}
-        <section id="results" className="py-28 px-6 bg-[#07080d]">
-          <div className="max-w-6xl mx-auto">
-            <div className="text-center mb-16">
-              <p className="text-[#60a5fa] text-sm font-semibold uppercase tracking-widest mb-3">Case Studies</p>
-              <h2 className="text-4xl md:text-5xl font-extrabold tracking-tight leading-tight">Real results, real companies</h2>
-            </div>
-            <div className="grid md:grid-cols-3 gap-6">
-              {[
-                { company: "SaaS Platform", industry: "B2B Software", metric: "+412%", metricLabel: "Organic traffic in 6 months", detail: "Rebuilt site architecture, fixed 1,200+ technical issues, and shipped 80 pieces of pillar content.", accent: "#3b82f6" },
-                { company: "DTC Brand", industry: "Ecommerce", metric: "3.8×", metricLabel: "Revenue from organic search", detail: "Category SEO overhaul, 140 editorial backlinks, and product schema implementation.", accent: "#06b6d4" },
-                { company: "Law Firm", industry: "Professional Services", metric: "#1", metricLabel: "Local pack in 12 target cities", detail: "Citation cleanup, Google Business optimization, and geo-targeted content strategy.", accent: "#8b5cf6" },
-              ].map((cs) => (
-                <div key={cs.company}
-                  className="border border-white/8 rounded-2xl p-8"
-                  style={{ background: `linear-gradient(135deg, ${cs.accent}10 0%, transparent 60%)` }}>
-                  <div className="flex items-center justify-between mb-6">
-                    <div>
-                      <div className="font-bold text-white">{cs.company}</div>
-                      <div className="text-zinc-500 text-xs mt-0.5">{cs.industry}</div>
-                    </div>
-                    <span className="text-xs font-semibold px-3 py-1 rounded-full"
-                      style={{ backgroundColor: `${cs.accent}20`, color: cs.accent }}>
-                      {cs.industry}
-                    </span>
-                  </div>
-                  <div className="text-5xl font-extrabold leading-none mb-1" style={{ color: cs.accent }}>{cs.metric}</div>
-                  <div className="text-zinc-300 font-medium text-sm mb-4">{cs.metricLabel}</div>
-                  <p className="text-zinc-400 text-sm leading-relaxed">{cs.detail}</p>
-                </div>
-              ))}
-            </div>
-          </div>
+        {/* CASE STUDIES — sticky scroll */}
+        <section id="results">
+          <ScrollCaseStudies />
         </section>
 
-        {/* TESTIMONIALS */}
-        <section id="testimonials" className="py-28 px-6" style={{ backgroundColor: "#060709" }}>
-          <div className="max-w-6xl mx-auto">
-            <div className="text-center mb-16">
-              <p className="text-[#60a5fa] text-sm font-semibold uppercase tracking-widest mb-3">Testimonials</p>
-              <h2 className="text-4xl md:text-5xl font-extrabold tracking-tight leading-tight">Don&apos;t take our word for it</h2>
-            </div>
-            <div className="grid md:grid-cols-3 gap-5">
-              {[
-                { quote: "OmniFlow took us from page 3 to the top 3 positions for our most competitive keywords in under four months. The ROI has been extraordinary.", name: "Sarah K.", role: "VP of Marketing, Fintech startup" },
-                { quote: "Most SEO agencies talk a big game. OmniFlow delivers. They built 60 editorial links in 90 days and our domain authority jumped 18 points.", name: "James R.", role: "Founder, SaaS company" },
-                { quote: "The monthly reporting alone is worth the retainer. We finally understand what's driving organic revenue and where every dollar goes.", name: "Priya M.", role: "Head of Growth, Ecommerce brand" },
-                { quote: "Our local competitors had a years-long head start. Within six months, we were ranking above them in every city we targeted.", name: "Tom B.", role: "Owner, Multi-location services" },
-                { quote: "They audited our site in week one and found a crawl issue that had been bleeding traffic for two years. Fixed in 48 hours.", name: "Lisa C.", role: "CTO, Media company" },
-                { quote: "The content team writes like experts in our field. Readers can't tell it's SEO content — because it isn't just SEO content.", name: "Marcus D.", role: "Content Director, B2B platform" },
-              ].map((t) => (
-                <div key={t.name} className="bg-white/[0.03] border border-white/5 rounded-2xl p-7">
-                  <div className="flex gap-0.5 mb-4">
-                    {[...Array(5)].map((_, i) => (
-                      <svg key={i} className="w-4 h-4" style={{ color: "#3b82f6" }} fill="currentColor" viewBox="0 0 20 20">
-                        <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                      </svg>
-                    ))}
-                  </div>
-                  <p className="text-zinc-300 text-sm leading-relaxed mb-6">&ldquo;{t.quote}&rdquo;</p>
-                  <div>
-                    <div className="font-semibold text-white text-sm">{t.name}</div>
-                    <div className="text-zinc-500 text-xs mt-0.5">{t.role}</div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
+        {/* TESTIMONIALS — floating scroll */}
+        <section id="testimonials">
+          <ScrollTestimonials />
         </section>
 
         {/* PRICING */}
@@ -261,9 +188,9 @@ export default function SEOWebsite() {
         <section id="contact" className="py-28 px-6 bg-[#07080d]">
           <div className="max-w-4xl mx-auto">
             <div className="relative rounded-3xl px-10 py-16 text-center overflow-hidden border border-white/8"
-              style={{ background: "linear-gradient(135deg, rgba(29,78,216,0.25) 0%, rgba(8,145,178,0.15) 100%)" }}>
+              style={{ background: "linear-gradient(135deg, rgba(29,78,216,0.22) 0%, rgba(8,145,178,0.14) 100%)" }}>
               <div className="absolute inset-0 pointer-events-none"
-                style={{ background: "radial-gradient(ellipse at center, rgba(29,78,216,0.2) 0%, transparent 70%)" }} />
+                style={{ background: "radial-gradient(ellipse at center, rgba(29,78,216,0.18) 0%, transparent 70%)" }} />
               <div className="relative z-10">
                 <h2 className="text-4xl md:text-5xl font-extrabold tracking-tight mb-4">Ready to rank?</h2>
                 <p className="text-zinc-300 text-lg mb-10 max-w-xl mx-auto">
@@ -271,10 +198,9 @@ export default function SEOWebsite() {
                 </p>
                 <form className="flex flex-col sm:flex-row gap-3 max-w-md mx-auto">
                   <input type="email" placeholder="Enter your email"
-                    className="flex-1 bg-white/10 border border-white/10 text-white placeholder-zinc-500 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:border-transparent"
-                    style={{ "--tw-ring-color": "#3b82f6" } as React.CSSProperties} />
+                    className="flex-1 bg-white/10 border border-white/10 text-white placeholder-zinc-500 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
                   <button type="submit"
-                    className="text-white font-semibold px-6 py-3 rounded-xl text-sm whitespace-nowrap transition-opacity hover:opacity-90"
+                    className="text-white font-semibold px-6 py-3 rounded-xl text-sm whitespace-nowrap hover:opacity-90 transition-opacity"
                     style={{ background: "linear-gradient(135deg, #1d4ed8 0%, #0891b2 100%)" }}>
                     Get Free Audit
                   </button>
@@ -287,13 +213,13 @@ export default function SEOWebsite() {
       </main>
 
       {/* FOOTER */}
-      <footer className="border-t border-white/5 py-12 px-6 bg-[#07080d]">
+      <footer className="border-t border-white/5 py-10 px-6 bg-[#07080d]">
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6">
           <img
             src="https://images.squarespace-cdn.com/content/v1/62ed6ed258fee028614389d2/b303dd3c-b649-439a-9f9a-d46695714210/Omni+Enterprises+Group+2.png?format=1500w"
             alt="OmniFlow Digital"
-            className="h-6 w-auto object-contain"
-            style={{ filter: "brightness(0) invert(1) opacity(0.6)" }}
+            className="h-5 w-auto object-contain"
+            style={{ filter: "brightness(0) invert(1) opacity(0.4)" }}
           />
           <nav className="flex flex-wrap justify-center gap-6 text-sm text-zinc-500">
             <a href="#services" className="hover:text-white transition-colors">Services</a>
@@ -302,7 +228,7 @@ export default function SEOWebsite() {
             <a href="#testimonials" className="hover:text-white transition-colors">Testimonials</a>
             <a href="#pricing" className="hover:text-white transition-colors">Pricing</a>
           </nav>
-          <p className="text-zinc-600 text-sm">© 2026 OmniFlow Digital. All rights reserved.</p>
+          <p className="text-zinc-600 text-sm">© 2026 OmniFlow Digital.</p>
         </div>
       </footer>
     </div>
