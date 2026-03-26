@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { getNavHeight } from "./navHeight";
 
 const STEPS = 4;
 const VH_PER_STEP = 0.65;
@@ -41,9 +42,13 @@ export default function ScrollProcess() {
 
   useEffect(() => {
     const setHeights = () => {
-      const h = window.innerHeight;
-      if (containerRef.current) containerRef.current.style.height = `${h * STEPS * VH_PER_STEP}px`;
-      if (stickyRef.current) stickyRef.current.style.height = `${h}px`;
+      const navH = getNavHeight();
+      const avail = window.innerHeight - navH;
+      if (containerRef.current) containerRef.current.style.height = `${avail * STEPS * VH_PER_STEP}px`;
+      if (stickyRef.current) {
+        stickyRef.current.style.top = `${navH}px`;
+        stickyRef.current.style.height = `${avail}px`;
+      }
     };
     setHeights();
     window.addEventListener("resize", setHeights);
@@ -54,9 +59,10 @@ export default function ScrollProcess() {
     const handleScroll = () => {
       if (!containerRef.current) return;
       const rect = containerRef.current.getBoundingClientRect();
-      const h = window.innerHeight;
-      const total = rect.height - h;
-      const scrolled = -rect.top;
+      const navH = getNavHeight();
+      const avail = window.innerHeight - navH;
+      const total = rect.height - avail;
+      const scrolled = navH - rect.top;
       const pct = Math.max(0, Math.min(1, scrolled / total));
       const raw = pct * STEPS;
       const index = Math.min(STEPS - 1, Math.floor(raw));
@@ -74,7 +80,7 @@ export default function ScrollProcess() {
 
   return (
     <div ref={containerRef} className="relative">
-      <div ref={stickyRef} className="sticky top-0 bg-[#09090b] overflow-hidden flex flex-col">
+      <div ref={stickyRef} className="sticky bg-[#09090b] overflow-hidden flex flex-col">
 
         {/* Persistent header */}
         <div className="flex-shrink-0 pt-7 pb-5 px-6 md:px-12 border-b border-white/5">

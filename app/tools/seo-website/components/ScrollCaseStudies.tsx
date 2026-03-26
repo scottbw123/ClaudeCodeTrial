@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { getNavHeight } from "./navHeight";
 
 const CASES = 3;
 const VH_PER_CASE = 1.1;
@@ -166,9 +167,13 @@ export default function ScrollCaseStudies() {
 
   useEffect(() => {
     const setHeights = () => {
-      const h = window.innerHeight;
-      if (containerRef.current) containerRef.current.style.height = `${h * CASES * VH_PER_CASE}px`;
-      if (stickyRef.current) stickyRef.current.style.height = `${h}px`;
+      const navH = getNavHeight();
+      const avail = window.innerHeight - navH;
+      if (containerRef.current) containerRef.current.style.height = `${avail * CASES * VH_PER_CASE}px`;
+      if (stickyRef.current) {
+        stickyRef.current.style.top = `${navH}px`;
+        stickyRef.current.style.height = `${avail}px`;
+      }
     };
     setHeights();
     window.addEventListener("resize", setHeights);
@@ -181,9 +186,10 @@ export default function ScrollCaseStudies() {
     const handleScroll = () => {
       if (!containerRef.current) return;
       const rect = containerRef.current.getBoundingClientRect();
-      const h = window.innerHeight;
-      const total = rect.height - h;
-      const scrolled = -rect.top;
+      const navH = getNavHeight();
+      const avail = window.innerHeight - navH;
+      const total = rect.height - avail;
+      const scrolled = navH - rect.top;
       const pct = Math.max(0, Math.min(1, scrolled / total));
       const raw = pct * CASES;
       const index = Math.min(CASES - 1, Math.floor(raw));
@@ -211,7 +217,7 @@ export default function ScrollCaseStudies() {
 
   return (
     <div ref={containerRef} className="relative">
-      <div ref={stickyRef} className="sticky top-0 overflow-hidden flex flex-col transition-colors duration-500"
+      <div ref={stickyRef} className="sticky overflow-hidden flex flex-col transition-colors duration-500"
         style={{ backgroundColor: c.bg }}>
 
         {/* Ambient glow */}

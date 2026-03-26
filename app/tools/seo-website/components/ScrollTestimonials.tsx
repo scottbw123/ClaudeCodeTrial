@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { getNavHeight } from "./navHeight";
 
 const ITEMS = 6;
 const VH_PER_ITEM = 1.0;
@@ -62,11 +63,15 @@ export default function ScrollTestimonials() {
 
   useEffect(() => {
     const setHeights = () => {
-      const h = window.innerHeight;
-      if (containerRef.current) containerRef.current.style.height = `${h * ITEMS * VH_PER_ITEM}px`;
-      if (stickyRef.current) stickyRef.current.style.height = `${h}px`;
-      // header is roughly 80px, so card area = h - 80
-      setCardAreaH(h - 80);
+      const navH = getNavHeight();
+      const avail = window.innerHeight - navH;
+      if (containerRef.current) containerRef.current.style.height = `${avail * ITEMS * VH_PER_ITEM}px`;
+      if (stickyRef.current) {
+        stickyRef.current.style.top = `${navH}px`;
+        stickyRef.current.style.height = `${avail}px`;
+      }
+      // card area = avail minus the internal section header (~80px)
+      setCardAreaH(avail - 80);
     };
     setHeights();
     window.addEventListener("resize", setHeights);
@@ -77,9 +82,10 @@ export default function ScrollTestimonials() {
     const handleScroll = () => {
       if (!containerRef.current) return;
       const rect = containerRef.current.getBoundingClientRect();
-      const h = window.innerHeight;
-      const total = rect.height - h;
-      const scrolled = -rect.top;
+      const navH = getNavHeight();
+      const avail = window.innerHeight - navH;
+      const total = rect.height - avail;
+      const scrolled = navH - rect.top;
       if (scrolled < 0) { setActiveIndex(-1); return; }
       const pct = Math.max(0, Math.min(1, scrolled / total));
       const raw = pct * ITEMS;
@@ -108,7 +114,7 @@ export default function ScrollTestimonials() {
         .tf-idle-5{animation:tf5 6.5s ease-in-out infinite;animation-delay:1.5s;}
       `}</style>
 
-      <div ref={stickyRef} className="sticky top-0 overflow-hidden" style={{ backgroundColor: "#060709" }}>
+      <div ref={stickyRef} className="sticky overflow-hidden" style={{ backgroundColor: "#060709" }}>
         {/* Ambient */}
         <div className="absolute inset-0 pointer-events-none"
           style={{ background: "radial-gradient(ellipse at 50% 50%, rgba(29,78,216,0.05) 0%, transparent 70%)" }} />

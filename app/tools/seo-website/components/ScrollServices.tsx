@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { getNavHeight } from "./navHeight";
 
 const STEPS = 6;
 const VH_PER_STEP = 0.85;
@@ -105,13 +106,15 @@ export default function ScrollServices() {
   const [activeIndex, setActiveIndex] = useState(0);
   const [contentVisible, setContentVisible] = useState(true);
 
-  // Set exact pixel heights from window.innerHeight so scroll math
-  // is perfectly aligned on every device (avoids mobile vh issues).
   useEffect(() => {
     const setHeights = () => {
-      const h = window.innerHeight;
-      if (containerRef.current) containerRef.current.style.height = `${h * STEPS * VH_PER_STEP}px`;
-      if (stickyRef.current) stickyRef.current.style.height = `${h}px`;
+      const navH = getNavHeight();
+      const avail = window.innerHeight - navH;
+      if (containerRef.current) containerRef.current.style.height = `${avail * STEPS * VH_PER_STEP}px`;
+      if (stickyRef.current) {
+        stickyRef.current.style.top = `${navH}px`;
+        stickyRef.current.style.height = `${avail}px`;
+      }
     };
     setHeights();
     window.addEventListener("resize", setHeights);
@@ -122,9 +125,10 @@ export default function ScrollServices() {
     const handleScroll = () => {
       if (!containerRef.current) return;
       const rect = containerRef.current.getBoundingClientRect();
-      const h = window.innerHeight;
-      const total = rect.height - h;
-      const scrolled = -rect.top;
+      const navH = getNavHeight();
+      const avail = window.innerHeight - navH;
+      const total = rect.height - avail;
+      const scrolled = navH - rect.top;
       const pct = Math.max(0, Math.min(1, scrolled / total));
       const raw = pct * STEPS;
       const index = Math.min(STEPS - 1, Math.floor(raw));
@@ -143,7 +147,7 @@ export default function ScrollServices() {
     <div ref={containerRef} className="relative">
       <div
         ref={stickyRef}
-        className="sticky top-0 overflow-hidden flex flex-col transition-colors duration-700"
+        className="sticky overflow-hidden flex flex-col transition-colors duration-700"
         style={{ backgroundColor: s.bg }}
       >
         <div className="absolute inset-0 pointer-events-none transition-all duration-700"
