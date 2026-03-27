@@ -19,7 +19,7 @@ const services = [
         <path d="M40 14 L40 20 M40 60 L40 66 M14 40 L20 40 M60 40 L66 40" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
       </svg>
     ),
-    bg: "#07090f", accent: "#3b82f6", accentLight: "#93c5fd",
+    bg: "#eff6ff", accent: "#2563eb", accentLight: "#1d4ed8",
     stat: "47%", statLabel: "of sites have critical crawl errors",
   },
   {
@@ -34,7 +34,7 @@ const services = [
         <path d="M34 46 L46 34" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
       </svg>
     ),
-    bg: "#060e09", accent: "#10b981", accentLight: "#6ee7b7",
+    bg: "#f0fdf4", accent: "#059669", accentLight: "#047857",
     stat: "#1", statLabel: "Google ranking factor is backlinks",
   },
   {
@@ -48,7 +48,7 @@ const services = [
         <path d="M53 57 L57 61 L63 53" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
       </svg>
     ),
-    bg: "#0d0a04", accent: "#f59e0b", accentLight: "#fcd34d",
+    bg: "#fffbeb", accent: "#d97706", accentLight: "#b45309",
     stat: "55%", statLabel: "more traffic for companies with active blogs",
   },
   {
@@ -61,7 +61,7 @@ const services = [
         <path d="M20 72 Q30 66 40 72 Q50 78 60 72" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" opacity="0.5" />
       </svg>
     ),
-    bg: "#0d0606", accent: "#ef4444", accentLight: "#fca5a5",
+    bg: "#fef2f2", accent: "#dc2626", accentLight: "#b91c1c",
     stat: "46%", statLabel: "of all Google searches have local intent",
   },
   {
@@ -75,7 +75,7 @@ const services = [
         <path d="M40 28 L40 46 M33 37 L47 37" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
       </svg>
     ),
-    bg: "#08060e", accent: "#8b5cf6", accentLight: "#c4b5fd",
+    bg: "#f5f3ff", accent: "#7c3aed", accentLight: "#6d28d9",
     stat: "53%", statLabel: "of ecommerce traffic comes from organic search",
   },
   {
@@ -95,7 +95,7 @@ const services = [
         <rect x="58" y="26" width="8" height="34" rx="1.5" fill="currentColor" fillOpacity="0.4" />
       </svg>
     ),
-    bg: "#04100e", accent: "#06b6d4", accentLight: "#67e8f9",
+    bg: "#ecfeff", accent: "#0891b2", accentLight: "#0e7490",
     stat: "6×", statLabel: "better ROI from data-driven SEO programs",
   },
 ];
@@ -151,16 +151,16 @@ export default function ScrollServices() {
         style={{ backgroundColor: s.bg }}
       >
         <div className="absolute inset-0 pointer-events-none transition-all duration-700"
-          style={{ background: `radial-gradient(ellipse at 65% 60%, ${s.accent}18 0%, transparent 65%)` }} />
+          style={{ background: `radial-gradient(ellipse at 65% 60%, ${s.accent}14 0%, transparent 65%)` }} />
 
         {/* Persistent header */}
-        <div className="relative z-10 flex-shrink-0 pt-7 pb-5 px-6 md:px-12 border-b border-white/5">
+        <div className="relative z-10 flex-shrink-0 pt-7 pb-5 px-6 md:px-12 border-b border-black/6">
           <div className="max-w-7xl mx-auto flex items-end justify-between gap-6">
             <div>
               <p className="text-xs font-semibold uppercase tracking-widest mb-1.5 transition-colors duration-500" style={{ color: s.accent }}>
                 Services
               </p>
-              <h2 className="text-2xl md:text-3xl font-extrabold text-white tracking-tight leading-tight">
+              <h2 className="text-2xl md:text-3xl font-extrabold text-slate-900 tracking-tight leading-tight">
                 Everything your SEO needs, nothing it doesn&apos;t
               </h2>
             </div>
@@ -169,7 +169,7 @@ export default function ScrollServices() {
                 <div key={i} className="rounded-full transition-all duration-400"
                   style={{
                     width: i === activeIndex ? "20px" : "6px", height: "6px",
-                    backgroundColor: i === activeIndex ? s.accent : i < activeIndex ? `${s.accent}50` : "rgba(255,255,255,0.12)",
+                    backgroundColor: i === activeIndex ? s.accent : i < activeIndex ? `${s.accent}50` : "rgba(0,0,0,0.12)",
                   }} />
               ))}
             </div>
@@ -184,20 +184,20 @@ export default function ScrollServices() {
               <p className="text-sm font-bold uppercase tracking-widest mb-4 transition-colors duration-500" style={{ color: s.accent }}>
                 {String(activeIndex + 1).padStart(2, "0")} / {String(STEPS).padStart(2, "0")}
               </p>
-              <h3 className="text-5xl md:text-6xl font-extrabold text-white tracking-tight leading-none mb-5">{s.title}</h3>
-              <p className="text-zinc-300 text-base md:text-lg leading-relaxed mb-8 max-w-md">{s.description}</p>
+              <h3 className="text-5xl md:text-6xl font-extrabold text-slate-900 tracking-tight leading-none mb-5">{s.title}</h3>
+              <p className="text-slate-600 text-base md:text-lg leading-relaxed mb-8 max-w-md">{s.description}</p>
               <div className="inline-flex items-baseline gap-3 px-5 py-3 rounded-xl border"
-                style={{ borderColor: `${s.accent}35`, backgroundColor: `${s.accent}0e` }}>
+                style={{ borderColor: `${s.accent}30`, backgroundColor: `${s.accent}0d` }}>
                 <span className="text-3xl font-extrabold" style={{ color: s.accentLight }}>{s.stat}</span>
-                <span className="text-zinc-400 text-sm">{s.statLabel}</span>
+                <span className="text-slate-500 text-sm">{s.statLabel}</span>
               </div>
             </div>
             <div className="hidden lg:flex items-center justify-center">
               <div className="flex items-center justify-center rounded-full transition-all duration-700"
                 style={{
                   width: 280, height: 280, padding: "56px",
-                  background: `radial-gradient(circle, ${s.accent}12 0%, transparent 70%)`,
-                  border: `1px solid ${s.accent}18`, color: s.accent,
+                  background: `radial-gradient(circle, ${s.accent}14 0%, transparent 70%)`,
+                  border: `1px solid ${s.accent}28`, color: s.accent,
                 }}>
                 {s.icon}
               </div>
@@ -206,7 +206,7 @@ export default function ScrollServices() {
         </div>
 
         {/* Progress */}
-        <div className="absolute bottom-0 left-0 right-0 h-px bg-white/5">
+        <div className="absolute bottom-0 left-0 right-0 h-px bg-black/6">
           <div className="h-full transition-all duration-150" style={{
             width: `${((activeIndex + 1) / STEPS) * 100}%`,
             backgroundColor: s.accent,

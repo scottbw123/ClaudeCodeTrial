@@ -80,25 +80,25 @@ export default function ScrollProcess() {
 
   return (
     <div ref={containerRef} className="relative">
-      <div ref={stickyRef} className="sticky bg-[#09090b] overflow-hidden flex flex-col">
+      <div ref={stickyRef} className="sticky bg-slate-900 overflow-hidden flex flex-col">
 
         {/* Persistent header */}
-        <div className="flex-shrink-0 pt-7 pb-5 px-6 md:px-12 border-b border-white/5">
+        <div className="flex-shrink-0 pt-7 pb-5 px-6 md:px-12 border-b border-white/8">
           <div className="max-w-5xl mx-auto flex items-end justify-between gap-6">
             <div>
-              <p className="text-zinc-500 text-xs font-semibold uppercase tracking-widest mb-1.5">How it works</p>
+              <p className="text-slate-400 text-xs font-semibold uppercase tracking-widest mb-1.5">How it works</p>
               <h2 className="text-2xl md:text-3xl font-extrabold text-white tracking-tight">From audit to #1 in 90 days</h2>
             </div>
             <div className="hidden md:flex items-center gap-0 flex-shrink-0 pb-1">
               {steps.map((s, i) => (
                 <div key={i} className="flex items-center">
                   <div className="text-xs font-bold tracking-widest transition-all duration-400 px-2"
-                    style={{ color: i <= activeIndex ? "#e2e8f0" : "#3f3f46" }}>
+                    style={{ color: i <= activeIndex ? "#f1f5f9" : "#475569" }}>
                     {s.number}
                   </div>
                   {i < STEPS - 1 && (
                     <div className="w-6 h-px transition-colors duration-500"
-                      style={{ backgroundColor: i < activeIndex ? "#e2e8f0" : "#27272a" }} />
+                      style={{ backgroundColor: i < activeIndex ? "#f1f5f9" : "#334155" }} />
                   )}
                 </div>
               ))}
@@ -111,7 +111,7 @@ export default function ScrollProcess() {
           <div style={{ height: "110px" }} className="relative w-full flex items-center justify-center mb-5">
             <div className="absolute text-[8rem] font-black leading-none tracking-tighter select-none"
               style={{
-                color: "transparent", WebkitTextStroke: "1px rgba(255,255,255,0.04)",
+                color: "transparent", WebkitTextStroke: "1px rgba(255,255,255,0.06)",
                 opacity: textVisible ? 1 : 0, transition: "opacity 0.3s ease",
               }}>
               {step.number}
@@ -129,10 +129,10 @@ export default function ScrollProcess() {
           <div className="text-center max-w-2xl w-full transition-all duration-300"
             style={{ opacity: textVisible ? 1 : 0, transform: textVisible ? "translateY(0)" : "translateY(10px)" }}>
             <h3 className="text-3xl md:text-4xl font-extrabold text-white tracking-tight mb-4">{step.title}</h3>
-            <p className="text-zinc-400 text-base md:text-lg leading-relaxed mb-7">{step.description}</p>
+            <p className="text-slate-400 text-base md:text-lg leading-relaxed mb-7">{step.description}</p>
             <div className="flex flex-wrap justify-center gap-2">
               {step.tags.map((tag) => (
-                <span key={tag} className="text-xs font-medium px-3 py-1.5 rounded-full bg-white/5 border border-white/8 text-zinc-400">{tag}</span>
+                <span key={tag} className="text-xs font-medium px-3 py-1.5 rounded-full bg-white/6 border border-white/10 text-slate-400">{tag}</span>
               ))}
             </div>
           </div>
@@ -141,13 +141,13 @@ export default function ScrollProcess() {
         {/* Progress */}
         <div className="flex-shrink-0 pb-7 px-6 md:px-12">
           <div className="max-w-5xl mx-auto">
-            <div className="h-px bg-white/8 rounded-full overflow-hidden">
+            <div className="h-px bg-white/10 rounded-full overflow-hidden">
               <div className="h-full bg-white rounded-full transition-all duration-150"
                 style={{ width: `${overallProgress * 100}%` }} />
             </div>
             <div className="flex justify-between mt-2">
-              <span className="text-xs text-zinc-700">Audit</span>
-              <span className="text-xs text-zinc-700">Complete</span>
+              <span className="text-xs text-slate-600">Audit</span>
+              <span className="text-xs text-slate-600">Complete</span>
             </div>
           </div>
         </div>
