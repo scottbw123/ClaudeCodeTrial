@@ -5,30 +5,32 @@ import { useEffect, useState } from "react";
 type CardProps = {
   index: number;
   offsetX: number;
+  yOffset: number;
   depth: number;
   zIndex: number;
-  highlight?: boolean;
   ready: boolean;
   children: React.ReactNode;
 };
 
-function Card({ index, offsetX, depth, zIndex, highlight, ready, children }: CardProps) {
+function Card({ index, offsetX, yOffset, depth, zIndex, ready, children }: CardProps) {
   const [hover, setHover] = useState(false);
+  const [lifted, setLifted] = useState(false);
   const stagger = index * 110;
   const baseRotate = "rotateX(-12deg) rotateY(-20deg) rotateZ(0.5deg)";
-  const restTransform = `translateX(${offsetX}px) translateY(0px) translateZ(${depth}px) ${baseRotate}`;
-  const hoverTransform = `translateX(${offsetX}px) translateY(-90px) translateZ(${depth}px) ${baseRotate}`;
-  const initTransform = `translateX(${offsetX}px) translateY(40px) translateZ(${depth - 40}px) ${baseRotate} scale(0.94)`;
+  const restTransform = `translateX(${offsetX}px) translateY(${yOffset}px) translateZ(${depth}px) ${baseRotate}`;
+  const liftedTransform = `translateX(${offsetX}px) translateY(${yOffset - 110}px) translateZ(${depth}px) ${baseRotate}`;
+  const initTransform = `translateX(${offsetX}px) translateY(${yOffset + 40}px) translateZ(${depth - 40}px) ${baseRotate} scale(0.94)`;
 
   return (
     <div
       onMouseEnter={() => setHover(true)}
       onMouseLeave={() => setHover(false)}
+      onClick={() => setLifted((l) => !l)}
       className={
         "absolute w-[420px] h-[280px] rounded-2xl bg-white overflow-hidden cursor-pointer " +
         "shadow-[0_30px_60px_-15px_rgba(0,0,0,0.25),0_10px_25px_-5px_rgba(0,0,0,0.1)] " +
         "border " +
-        (hover ? "border-sky-400/60" : highlight ? "border-sky-400/40" : "border-black/10")
+        (lifted || hover ? "border-sky-400/60" : "border-black/10")
       }
       style={{
         top: "50%",
@@ -36,7 +38,7 @@ function Card({ index, offsetX, depth, zIndex, highlight, ready, children }: Car
         marginTop: "-140px",
         marginLeft: "-210px",
         zIndex,
-        transform: ready ? (hover ? hoverTransform : restTransform) : initTransform,
+        transform: ready ? (lifted ? liftedTransform : restTransform) : initTransform,
         opacity: ready ? 1 : 0,
         transition: `transform ${ready ? 600 : 1100}ms cubic-bezier(0.34, 1.56, 0.64, 1) ${ready ? 0 : stagger}ms, opacity 700ms ease-out ${stagger}ms, border-color 200ms ease-out`,
       }}
@@ -317,19 +319,19 @@ export default function SeoCardStack() {
             }}
           >
             <Floor />
-            <Card index={0} offsetX={-140} depth={80} zIndex={60} ready={ready}>
+            <Card index={0} offsetX={-140} yOffset={0} depth={80} zIndex={60} ready={ready}>
               <KeywordsCard />
             </Card>
-            <Card index={1} offsetX={-70} depth={60} zIndex={50} ready={ready}>
+            <Card index={1} offsetX={-70} yOffset={-18} depth={60} zIndex={50} ready={ready}>
               <RankingsCard />
             </Card>
-            <Card index={2} offsetX={0} depth={40} zIndex={40} ready={ready}>
+            <Card index={2} offsetX={0} yOffset={-36} depth={40} zIndex={40} ready={ready}>
               <AuditCard />
             </Card>
-            <Card index={3} offsetX={70} depth={20} zIndex={30} ready={ready}>
+            <Card index={3} offsetX={70} yOffset={-54} depth={20} zIndex={30} ready={ready}>
               <LiveSerpCard />
             </Card>
-            <Card index={4} offsetX={140} depth={0} zIndex={20} ready={ready}>
+            <Card index={4} offsetX={140} yOffset={-72} depth={0} zIndex={20} ready={ready}>
               <BacklinksCard />
             </Card>
           </div>
