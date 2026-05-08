@@ -9,23 +9,24 @@ type CardProps = {
   depth: number;
   zIndex: number;
   ready: boolean;
+  lifted: boolean;
+  onToggle: () => void;
   children: React.ReactNode;
 };
 
-function Card({ index, offsetX, yOffset, depth, zIndex, ready, children }: CardProps) {
+function Card({ index, offsetX, yOffset, depth, zIndex, ready, lifted, onToggle, children }: CardProps) {
   const [hover, setHover] = useState(false);
-  const [lifted, setLifted] = useState(false);
   const stagger = index * 110;
   const baseRotate = "rotateX(-12deg) rotateY(-20deg) rotateZ(0.5deg)";
   const restTransform = `translateX(${offsetX}px) translateY(${yOffset}px) translateZ(${depth}px) ${baseRotate}`;
-  const liftedTransform = `translateX(${offsetX}px) translateY(${yOffset - 110}px) translateZ(${depth}px) ${baseRotate}`;
+  const liftedTransform = `translateX(${offsetX}px) translateY(${yOffset - 160}px) translateZ(${depth + 40}px) ${baseRotate}`;
   const initTransform = `translateX(${offsetX}px) translateY(${yOffset + 40}px) translateZ(${depth - 40}px) ${baseRotate} scale(0.94)`;
 
   return (
     <div
       onMouseEnter={() => setHover(true)}
       onMouseLeave={() => setHover(false)}
-      onClick={() => setLifted((l) => !l)}
+      onClick={onToggle}
       className={
         "absolute w-[420px] h-[280px] rounded-2xl bg-white overflow-hidden cursor-pointer " +
         "shadow-[0_30px_60px_-15px_rgba(0,0,0,0.25),0_10px_25px_-5px_rgba(0,0,0,0.1)] " +
@@ -37,7 +38,7 @@ function Card({ index, offsetX, yOffset, depth, zIndex, ready, children }: CardP
         left: "50%",
         marginTop: "-140px",
         marginLeft: "-210px",
-        zIndex,
+        zIndex: lifted ? 999 : zIndex,
         transform: ready ? (lifted ? liftedTransform : restTransform) : initTransform,
         opacity: ready ? 1 : 0,
         transition: `transform ${ready ? 600 : 1100}ms cubic-bezier(0.34, 1.56, 0.64, 1) ${ready ? 0 : stagger}ms, opacity 700ms ease-out ${stagger}ms, border-color 200ms ease-out`,
@@ -296,10 +297,13 @@ function Floor() {
 
 export default function SeoCardStack() {
   const [ready, setReady] = useState(false);
+  const [liftedIndex, setLiftedIndex] = useState<number | null>(null);
   useEffect(() => {
     const t = setTimeout(() => setReady(true), 80);
     return () => clearTimeout(t);
   }, []);
+  const toggle = (i: number) =>
+    setLiftedIndex((prev) => (prev === i ? null : i));
 
   return (
     <div className="w-full pt-32 pb-16">
@@ -319,19 +323,19 @@ export default function SeoCardStack() {
             }}
           >
             <Floor />
-            <Card index={0} offsetX={-140} yOffset={0} depth={80} zIndex={60} ready={ready}>
+            <Card index={0} offsetX={-140} yOffset={0} depth={80} zIndex={60} ready={ready} lifted={liftedIndex === 0} onToggle={() => toggle(0)}>
               <KeywordsCard />
             </Card>
-            <Card index={1} offsetX={-70} yOffset={-18} depth={60} zIndex={50} ready={ready}>
+            <Card index={1} offsetX={-70} yOffset={-18} depth={60} zIndex={50} ready={ready} lifted={liftedIndex === 1} onToggle={() => toggle(1)}>
               <RankingsCard />
             </Card>
-            <Card index={2} offsetX={0} yOffset={-36} depth={40} zIndex={40} ready={ready}>
+            <Card index={2} offsetX={0} yOffset={-36} depth={40} zIndex={40} ready={ready} lifted={liftedIndex === 2} onToggle={() => toggle(2)}>
               <AuditCard />
             </Card>
-            <Card index={3} offsetX={70} yOffset={-54} depth={20} zIndex={30} ready={ready}>
+            <Card index={3} offsetX={70} yOffset={-54} depth={20} zIndex={30} ready={ready} lifted={liftedIndex === 3} onToggle={() => toggle(3)}>
               <LiveSerpCard />
             </Card>
-            <Card index={4} offsetX={140} yOffset={-72} depth={0} zIndex={20} ready={ready}>
+            <Card index={4} offsetX={140} yOffset={-72} depth={0} zIndex={20} ready={ready} lifted={liftedIndex === 4} onToggle={() => toggle(4)}>
               <BacklinksCard />
             </Card>
           </div>
