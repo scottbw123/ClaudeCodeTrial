@@ -57,12 +57,12 @@ function Card({ index, offsetX, yOffset, depth, zIndex, ready, lifted, onToggle,
 
 function KeywordsCard() {
   const chips = [
-    "best running shoes",
-    "seo agency london",
-    "ecommerce checkout",
-    "near me",
-    "vegan recipes",
-    "ai writing tools",
+    { keyword: "best running shoes", volume: "42k" },
+    { keyword: "seo agency london", volume: "1.2k" },
+    { keyword: "ecommerce checkout", volume: "5.4k" },
+    { keyword: "near me", volume: "98k" },
+    { keyword: "vegan recipes", volume: "27k" },
+    { keyword: "ai writing tools", volume: "8.1k" },
   ];
   return (
     <div className="h-full w-full p-5 flex flex-col gap-3">
@@ -77,10 +77,15 @@ function KeywordsCard() {
       <div className="flex flex-wrap gap-1.5">
         {chips.map((c) => (
           <span
-            key={c}
-            className="text-[11px] px-2 py-1 rounded-md bg-black/5 text-black/80 border border-black/5"
+            key={c.keyword}
+            className="group text-[11px] px-2 py-1 rounded-md inline-flex items-center bg-black/5 text-black/80 border border-black/5 hover:bg-sky-100 hover:text-sky-800 hover:border-sky-200 transition-colors duration-200"
           >
-            {c}
+            <span>{c.keyword}</span>
+            <span
+              className="inline-block overflow-hidden font-mono text-[10px] text-sky-700 max-w-0 ml-0 group-hover:max-w-[40px] group-hover:ml-1.5 transition-all duration-200 ease-out whitespace-nowrap"
+            >
+              {c.volume}
+            </span>
           </span>
         ))}
       </div>
