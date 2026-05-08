@@ -64,8 +64,16 @@ function KeywordsCard() {
     { keyword: "vegan recipes", volume: "27k" },
     { keyword: "ai writing tools", volume: "8.1k" },
   ];
+  const [queue, setQueue] = useState<string[]>([]);
+  const toggleQueue = (e: React.MouseEvent, keyword: string) => {
+    e.stopPropagation();
+    setQueue((prev) =>
+      prev.includes(keyword) ? prev.filter((k) => k !== keyword) : [...prev, keyword]
+    );
+  };
+
   return (
-    <div className="h-full w-full p-5 flex flex-col gap-3">
+    <div className="h-full w-full p-4 flex flex-col gap-2.5">
       <div className="flex items-center justify-between">
         <span className="text-xs font-semibold tracking-wide text-black/50 uppercase">
           Keyword research
@@ -75,32 +83,50 @@ function KeywordsCard() {
         </span>
       </div>
       <div className="flex flex-wrap gap-1.5">
-        {chips.map((c) => (
-          <span
-            key={c.keyword}
-            className="group text-[11px] px-2 py-1 rounded-md inline-flex items-center bg-black/5 text-black/80 border border-black/5 hover:bg-sky-100 hover:text-sky-800 hover:border-sky-200 transition-colors duration-200"
-          >
-            <span>{c.keyword}</span>
+        {chips
+          .filter((c) => !queue.includes(c.keyword))
+          .map((c) => (
             <span
-              className="inline-block overflow-hidden font-mono text-[10px] text-sky-700 max-w-0 ml-0 group-hover:max-w-[40px] group-hover:ml-1.5 transition-all duration-200 ease-out whitespace-nowrap"
+              key={c.keyword}
+              onClick={(e) => toggleQueue(e, c.keyword)}
+              className="group text-[11px] px-2 py-1 rounded-md inline-flex items-center bg-black/5 text-black/80 border border-black/5 hover:bg-sky-100 hover:text-sky-800 hover:border-sky-200 transition-colors duration-200 cursor-pointer"
             >
-              {c.volume}
+              <span>{c.keyword}</span>
+              <span className="inline-block overflow-hidden font-mono text-[10px] text-sky-700 max-w-0 ml-0 group-hover:max-w-[40px] group-hover:ml-1.5 transition-all duration-200 ease-out whitespace-nowrap">
+                {c.volume}
+              </span>
             </span>
-          </span>
-        ))}
+          ))}
       </div>
-      <div className="mt-1 grid grid-cols-3 gap-2 text-center">
-        <div className="rounded-lg border border-black/5 bg-black/[0.02] p-2">
+      <div className="grid grid-cols-3 gap-2 text-center">
+        <div className="rounded-lg border border-black/5 bg-black/[0.02] p-1.5">
           <div className="text-[10px] text-black/50">Volume</div>
           <div className="text-sm font-semibold text-black">12.4k</div>
         </div>
-        <div className="rounded-lg border border-black/5 bg-black/[0.02] p-2">
+        <div className="rounded-lg border border-black/5 bg-black/[0.02] p-1.5">
           <div className="text-[10px] text-black/50">Difficulty</div>
           <div className="text-sm font-semibold text-amber-600">42</div>
         </div>
-        <div className="rounded-lg border border-black/5 bg-black/[0.02] p-2">
+        <div className="rounded-lg border border-black/5 bg-black/[0.02] p-1.5">
           <div className="text-[10px] text-black/50">Intent</div>
           <div className="text-sm font-semibold text-sky-700">Commercial</div>
+        </div>
+      </div>
+      <div className="mt-auto pt-1.5 border-t border-black/5 flex items-center gap-2 min-h-[28px]">
+        <span className="text-[9px] font-semibold tracking-wide text-black/40 uppercase shrink-0">
+          Queue · {queue.length}
+        </span>
+        <div className="flex flex-wrap gap-1 flex-1">
+          {queue.map((k) => (
+            <span
+              key={k}
+              onClick={(e) => toggleQueue(e, k)}
+              className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 border border-emerald-200 cursor-pointer hover:bg-emerald-200 transition-colors"
+              style={{ animation: "queueIn 320ms cubic-bezier(0.34, 1.56, 0.64, 1)" }}
+            >
+              {k}
+            </span>
+          ))}
         </div>
       </div>
     </div>
