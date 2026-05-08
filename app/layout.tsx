@@ -2,8 +2,9 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Seed Keyword Extractor",
-  description: "Extract SEO seed keywords from any web page",
+  title: "GSC Ranking Drop Analyzer",
+  description:
+    "Compare Google Search Console periods, find pages losing rank, and identify content gaps vs. competitors.",
 };
 
 export default function RootLayout({
