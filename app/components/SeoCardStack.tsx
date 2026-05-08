@@ -16,8 +16,8 @@ function Card({ index, offsetX, depth, zIndex, highlight, ready, children }: Car
   const [hover, setHover] = useState(false);
   const stagger = index * 110;
   const baseRotate = "rotateX(-12deg) rotateY(-20deg) rotateZ(0.5deg)";
-  const restTransform = `translateX(${offsetX}px) translateZ(${depth}px) ${baseRotate}`;
-  const hoverTransform = `translateX(${offsetX}px) translateY(-140px) translateZ(${depth + 120}px) rotateX(0deg) rotateY(0deg) rotateZ(0deg)`;
+  const restTransform = `translateX(${offsetX}px) translateY(0px) translateZ(${depth}px) ${baseRotate}`;
+  const hoverTransform = `translateX(${offsetX}px) translateY(-90px) translateZ(${depth}px) ${baseRotate}`;
   const initTransform = `translateX(${offsetX}px) translateY(40px) translateZ(${depth - 40}px) ${baseRotate} scale(0.94)`;
 
   return (
@@ -35,7 +35,7 @@ function Card({ index, offsetX, depth, zIndex, highlight, ready, children }: Car
         left: "50%",
         marginTop: "-140px",
         marginLeft: "-210px",
-        zIndex: hover ? 100 : zIndex,
+        zIndex,
         transform: ready ? (hover ? hoverTransform : restTransform) : initTransform,
         opacity: ready ? 1 : 0,
         transition: `transform ${ready ? 600 : 1100}ms cubic-bezier(0.34, 1.56, 0.64, 1) ${ready ? 0 : stagger}ms, opacity 700ms ease-out ${stagger}ms, border-color 200ms ease-out`,
