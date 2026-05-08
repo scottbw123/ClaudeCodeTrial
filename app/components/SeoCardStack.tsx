@@ -3,30 +3,42 @@
 import { useEffect, useState } from "react";
 
 type CardProps = {
+  index: number;
   offsetX: number;
   depth: number;
-  delay: number;
   zIndex: number;
   highlight?: boolean;
+  ready: boolean;
   children: React.ReactNode;
 };
 
-function Card({ offsetX, depth, delay, zIndex, highlight, children }: CardProps) {
+function Card({ index, offsetX, depth, zIndex, highlight, ready, children }: CardProps) {
+  const stagger = index * 110;
+  const restTransform = `translateX(${offsetX}px) translateZ(${depth}px) rotateX(-30deg) rotateY(-45deg) rotateZ(1deg) skew(0deg, -1deg)`;
+  const initTransform = `translateX(${offsetX - 30}px) translateZ(${depth - 60}px) rotateX(-30deg) rotateY(-45deg) rotateZ(1deg) skew(0deg, -1deg) scale(0.9)`;
+
   return (
     <div
       className={
-        "absolute w-[420px] h-[280px] rounded-2xl bg-white border " +
-        "shadow-[0_10px_40px_rgba(0,0,0,0.12)] overflow-hidden " +
-        (highlight ? "border-sky-400/60 " : "border-black/10 ") +
-        "transition-transform duration-700 ease-out"
+        "absolute w-[440px] h-[290px] rounded-2xl bg-white overflow-hidden " +
+        "shadow-[0_30px_60px_-15px_rgba(0,0,0,0.25),0_10px_25px_-5px_rgba(0,0,0,0.1)] " +
+        "border " +
+        (highlight ? "border-sky-400/60" : "border-black/10")
       }
       style={{
         zIndex,
-        transform: `translateX(${offsetX}px) translateZ(${depth}px) rotateX(-30deg) rotateY(-45deg) skew(0deg, -1deg)`,
-        transitionDelay: `${delay}ms`,
+        transform: ready ? restTransform : initTransform,
+        opacity: ready ? 1 : 0,
+        transition: `transform 1100ms cubic-bezier(0.34, 1.56, 0.64, 1) ${stagger}ms, opacity 700ms ease-out ${stagger}ms`,
       }}
     >
-      {children}
+      <div aria-hidden className="pointer-events-none absolute inset-0">
+        <span className="absolute top-0 inset-x-0 h-px bg-[repeating-linear-gradient(to_right,rgba(0,0,0,0.25)_0,rgba(0,0,0,0.25)_4px,transparent_4px,transparent_10px)] [mask-image:linear-gradient(to_right,transparent,black_12%,black_88%,transparent)]" />
+        <span className="absolute bottom-0 inset-x-0 h-px bg-[repeating-linear-gradient(to_right,rgba(0,0,0,0.25)_0,rgba(0,0,0,0.25)_4px,transparent_4px,transparent_10px)] [mask-image:linear-gradient(to_right,transparent,black_12%,black_88%,transparent)]" />
+        <span className="absolute left-0 inset-y-0 w-px bg-[repeating-linear-gradient(to_bottom,rgba(0,0,0,0.25)_0,rgba(0,0,0,0.25)_4px,transparent_4px,transparent_10px)] [mask-image:linear-gradient(to_bottom,transparent,black_12%,black_88%,transparent)]" />
+        <span className="absolute right-0 inset-y-0 w-px bg-[repeating-linear-gradient(to_bottom,rgba(0,0,0,0.25)_0,rgba(0,0,0,0.25)_4px,transparent_4px,transparent_10px)] [mask-image:linear-gradient(to_bottom,transparent,black_12%,black_88%,transparent)]" />
+      </div>
+      <div className="relative h-full w-full">{children}</div>
     </div>
   );
 }
@@ -81,11 +93,11 @@ function KeywordsCard() {
 function RankingsCard() {
   const [tick, setTick] = useState(0);
   useEffect(() => {
-    const id = setInterval(() => setTick((t) => t + 1), 1400);
+    const id = setInterval(() => setTick((t) => t + 1), 1500);
     return () => clearInterval(id);
   }, []);
   const seeds = [62, 24, 88, 41, 70, 33, 55];
-  const heights = seeds.map((s, i) => 30 + ((s + tick * 13 + i * 7) % 70));
+  const heights = seeds.map((s, i) => 28 + ((s + tick * 13 + i * 7) % 70));
 
   return (
     <div className="h-full w-full p-5 flex flex-col gap-3">
@@ -101,8 +113,8 @@ function RankingsCard() {
         {heights.map((h, i) => (
           <div
             key={i}
-            className="flex-1 rounded-t-md bg-gradient-to-t from-sky-500 to-sky-300 transition-all duration-700 ease-out"
-            style={{ height: `${h}%` }}
+            className="flex-1 rounded-t-md bg-gradient-to-t from-sky-500 to-sky-300"
+            style={{ height: `${h}%`, transition: "height 1200ms cubic-bezier(0.4, 0, 0.2, 1)" }}
           />
         ))}
       </div>
@@ -128,7 +140,7 @@ function AuditCard() {
       <span className="text-xs font-semibold tracking-wide text-black/50 uppercase">
         Site audit
       </span>
-      <div className="flex-1 rounded-lg border border-black/10 bg-black/90 text-emerald-300 font-mono text-[11px] overflow-hidden">
+      <div className="flex-1 rounded-lg border border-black/10 bg-[#0b0d10] text-emerald-300 font-mono text-[11px] overflow-hidden">
         <div className="flex items-center gap-1.5 px-3 py-1.5 bg-white/5 border-b border-white/10">
           <div className="w-2.5 h-2.5 rounded-full bg-red-400/70" />
           <div className="w-2.5 h-2.5 rounded-full bg-yellow-400/70" />
@@ -154,7 +166,7 @@ function AuditCard() {
 
 function LiveSerpCard() {
   return (
-    <div className="h-full w-full flex flex-col items-center justify-center gap-4 p-5 relative">
+    <div className="h-full w-full flex flex-col items-center justify-center gap-4 p-5">
       <div className="flex items-center gap-2">
         <span className="relative flex h-2.5 w-2.5">
           <span className="absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75 animate-ping" />
@@ -164,7 +176,7 @@ function LiveSerpCard() {
           Live SERP
         </span>
       </div>
-      <div className="text-5xl font-bold tracking-tight text-black tabular-nums">
+      <div className="text-6xl font-bold tracking-tight text-black tabular-nums">
         #1
       </div>
       <div className="text-xs text-black/50 text-center max-w-[260px]">
@@ -174,7 +186,7 @@ function LiveSerpCard() {
         {[0, 1, 2, 3].map((i) => (
           <span
             key={i}
-            className="h-1 w-8 rounded-full bg-sky-500/20 overflow-hidden relative"
+            className="h-1 w-8 rounded-full bg-sky-500/15 overflow-hidden relative"
           >
             <span
               className="absolute inset-y-0 left-0 w-1/2 bg-sky-500 rounded-full animate-[serpPulse_2.4s_ease-in-out_infinite]"
@@ -251,16 +263,42 @@ function BacklinksCard() {
   );
 }
 
-export default function SeoCardStack() {
+function Floor() {
   return (
-    <div className="w-full py-10">
-      <h2 className="mb-10 text-center text-2xl font-semibold tracking-tight text-foreground select-none">
+    <div
+      aria-hidden
+      className="absolute pointer-events-none"
+      style={{
+        width: "1100px",
+        height: "440px",
+        left: "50%",
+        top: "55%",
+        transform: "translate(-50%, 0) translateZ(-2px) rotateX(-90deg)",
+        transformStyle: "preserve-3d",
+      }}
+    >
+      <div className="absolute top-0 -left-40 w-[1600px] h-px bg-[repeating-linear-gradient(to_right,rgba(0,0,0,0.25)_0,rgba(0,0,0,0.25)_5px,transparent_5px,transparent_12px)] [mask-image:linear-gradient(to_right,transparent,black_15%,black_85%,transparent)]" />
+      <div className="absolute bottom-0 -left-40 w-[1600px] h-px bg-[repeating-linear-gradient(to_right,rgba(0,0,0,0.25)_0,rgba(0,0,0,0.25)_5px,transparent_5px,transparent_12px)] [mask-image:linear-gradient(to_right,transparent,black_15%,black_85%,transparent)]" />
+    </div>
+  );
+}
+
+export default function SeoCardStack() {
+  const [ready, setReady] = useState(false);
+  useEffect(() => {
+    const t = setTimeout(() => setReady(true), 80);
+    return () => clearTimeout(t);
+  }, []);
+
+  return (
+    <div className="w-full py-12">
+      <h2 className="mb-12 text-center text-2xl font-semibold tracking-tight text-foreground select-none">
         Everything your SEO agency runs, in one stack
       </h2>
-      <div className="flex min-h-[480px] w-full items-center justify-center overflow-hidden">
+      <div className="flex w-full items-center justify-center overflow-hidden min-h-[560px]">
         <div
           className="relative h-[560px] w-full max-w-6xl flex items-center justify-center"
-          style={{ perspective: "2200px" }}
+          style={{ perspective: "2400px" }}
         >
           <div
             className="relative w-full h-full"
@@ -269,19 +307,20 @@ export default function SeoCardStack() {
               transform: "rotateX(-22deg) rotateY(45deg)",
             }}
           >
-            <Card offsetX={-260} depth={80} delay={240} zIndex={60}>
+            <Floor />
+            <Card index={4} offsetX={-280} depth={90} zIndex={60} ready={ready}>
               <KeywordsCard />
             </Card>
-            <Card offsetX={-180} depth={60} delay={160} zIndex={50}>
+            <Card index={3} offsetX={-180} depth={68} zIndex={50} ready={ready}>
               <RankingsCard />
             </Card>
-            <Card offsetX={-100} depth={40} delay={80} zIndex={40}>
+            <Card index={2} offsetX={-80} depth={46} zIndex={40} ready={ready}>
               <AuditCard />
             </Card>
-            <Card offsetX={180} depth={20} delay={0} zIndex={30} highlight>
+            <Card index={1} offsetX={200} depth={22} zIndex={30} ready={ready} highlight>
               <LiveSerpCard />
             </Card>
-            <Card offsetX={460} depth={40} delay={80} zIndex={20}>
+            <Card index={0} offsetX={480} depth={44} zIndex={20} ready={ready}>
               <BacklinksCard />
             </Card>
           </div>
