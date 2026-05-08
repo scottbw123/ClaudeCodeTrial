@@ -15,9 +15,9 @@ type CardProps = {
 function Card({ index, offsetX, depth, zIndex, highlight, ready, children }: CardProps) {
   const [hover, setHover] = useState(false);
   const stagger = index * 110;
-  const baseRotate = "rotateX(-30deg) rotateY(-45deg) rotateZ(1deg) skew(0deg, -1deg)";
-  const liftZ = hover ? 50 : 0;
-  const restTransform = `translateX(${offsetX}px) translateZ(${depth + liftZ}px) ${baseRotate}`;
+  const baseRotate = "rotateX(-22deg) rotateY(-30deg) rotateZ(1deg) skew(0deg, -1deg)";
+  const restTransform = `translateX(${offsetX}px) translateZ(${depth}px) ${baseRotate}`;
+  const hoverTransform = `translateX(${offsetX * 0.3}px) translateY(-40px) translateZ(${depth + 280}px) rotateX(0deg) rotateY(0deg) rotateZ(0deg) skew(0deg, 0deg)`;
   const initTransform = `translateX(${offsetX - 24}px) translateZ(${depth - 50}px) ${baseRotate} scale(0.92)`;
 
   return (
@@ -32,9 +32,9 @@ function Card({ index, offsetX, depth, zIndex, highlight, ready, children }: Car
       }
       style={{
         zIndex: hover ? 100 : zIndex,
-        transform: ready ? restTransform : initTransform,
+        transform: ready ? (hover ? hoverTransform : restTransform) : initTransform,
         opacity: ready ? 1 : 0,
-        transition: `transform ${ready ? 700 : 1100}ms cubic-bezier(0.34, 1.56, 0.64, 1) ${ready ? 0 : stagger}ms, opacity 700ms ease-out ${stagger}ms, border-color 200ms ease-out`,
+        transition: `transform ${ready ? 600 : 1100}ms cubic-bezier(0.34, 1.56, 0.64, 1) ${ready ? 0 : stagger}ms, opacity 700ms ease-out ${stagger}ms, border-color 200ms ease-out`,
       }}
     >
       <div aria-hidden className="pointer-events-none absolute inset-0">
@@ -309,7 +309,7 @@ export default function SeoCardStack() {
             className="relative w-full h-full"
             style={{
               transformStyle: "preserve-3d",
-              transform: "rotateX(-22deg) rotateY(45deg)",
+              transform: "rotateX(-15deg) rotateY(30deg)",
             }}
           >
             <Floor />
