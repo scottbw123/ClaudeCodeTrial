@@ -13,23 +13,28 @@ type CardProps = {
 };
 
 function Card({ index, offsetX, depth, zIndex, highlight, ready, children }: CardProps) {
+  const [hover, setHover] = useState(false);
   const stagger = index * 110;
-  const restTransform = `translateX(${offsetX}px) translateZ(${depth}px) rotateX(-30deg) rotateY(-45deg) rotateZ(1deg) skew(0deg, -1deg)`;
-  const initTransform = `translateX(${offsetX - 30}px) translateZ(${depth - 60}px) rotateX(-30deg) rotateY(-45deg) rotateZ(1deg) skew(0deg, -1deg) scale(0.9)`;
+  const baseRotate = "rotateX(-30deg) rotateY(-45deg) rotateZ(1deg) skew(0deg, -1deg)";
+  const liftZ = hover ? 50 : 0;
+  const restTransform = `translateX(${offsetX}px) translateZ(${depth + liftZ}px) ${baseRotate}`;
+  const initTransform = `translateX(${offsetX - 24}px) translateZ(${depth - 50}px) ${baseRotate} scale(0.92)`;
 
   return (
     <div
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
       className={
-        "absolute w-[440px] h-[290px] rounded-2xl bg-white overflow-hidden " +
+        "absolute w-[420px] h-[280px] rounded-2xl bg-white overflow-hidden cursor-pointer " +
         "shadow-[0_30px_60px_-15px_rgba(0,0,0,0.25),0_10px_25px_-5px_rgba(0,0,0,0.1)] " +
         "border " +
-        (highlight ? "border-sky-400/60" : "border-black/10")
+        (hover ? "border-sky-400/60" : highlight ? "border-sky-400/40" : "border-black/10")
       }
       style={{
-        zIndex,
+        zIndex: hover ? 100 : zIndex,
         transform: ready ? restTransform : initTransform,
         opacity: ready ? 1 : 0,
-        transition: `transform 1100ms cubic-bezier(0.34, 1.56, 0.64, 1) ${stagger}ms, opacity 700ms ease-out ${stagger}ms`,
+        transition: `transform ${ready ? 700 : 1100}ms cubic-bezier(0.34, 1.56, 0.64, 1) ${ready ? 0 : stagger}ms, opacity 700ms ease-out ${stagger}ms, border-color 200ms ease-out`,
       }}
     >
       <div aria-hidden className="pointer-events-none absolute inset-0">
@@ -308,19 +313,19 @@ export default function SeoCardStack() {
             }}
           >
             <Floor />
-            <Card index={4} offsetX={-280} depth={90} zIndex={60} ready={ready}>
+            <Card index={4} offsetX={-200} depth={80} zIndex={60} ready={ready}>
               <KeywordsCard />
             </Card>
-            <Card index={3} offsetX={-180} depth={68} zIndex={50} ready={ready}>
+            <Card index={3} offsetX={-110} depth={60} zIndex={50} ready={ready}>
               <RankingsCard />
             </Card>
-            <Card index={2} offsetX={-80} depth={46} zIndex={40} ready={ready}>
+            <Card index={2} offsetX={-20} depth={40} zIndex={40} ready={ready}>
               <AuditCard />
             </Card>
-            <Card index={1} offsetX={200} depth={22} zIndex={30} ready={ready} highlight>
+            <Card index={1} offsetX={70} depth={20} zIndex={30} ready={ready} highlight>
               <LiveSerpCard />
             </Card>
-            <Card index={0} offsetX={480} depth={44} zIndex={20} ready={ready}>
+            <Card index={0} offsetX={160} depth={0} zIndex={20} ready={ready}>
               <BacklinksCard />
             </Card>
           </div>
