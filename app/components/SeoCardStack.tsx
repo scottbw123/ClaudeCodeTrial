@@ -15,10 +15,10 @@ type CardProps = {
 function Card({ index, offsetX, depth, zIndex, highlight, ready, children }: CardProps) {
   const [hover, setHover] = useState(false);
   const stagger = index * 110;
-  const baseRotate = "rotateX(-22deg) rotateY(-30deg) rotateZ(1deg) skew(0deg, -1deg)";
+  const baseRotate = "rotateX(-12deg) rotateY(-20deg) rotateZ(0.5deg)";
   const restTransform = `translateX(${offsetX}px) translateZ(${depth}px) ${baseRotate}`;
-  const hoverTransform = `translateX(${offsetX * 0.3}px) translateY(-40px) translateZ(${depth + 280}px) rotateX(0deg) rotateY(0deg) rotateZ(0deg) skew(0deg, 0deg)`;
-  const initTransform = `translateX(${offsetX - 24}px) translateZ(${depth - 50}px) ${baseRotate} scale(0.92)`;
+  const hoverTransform = `translateX(${offsetX}px) translateY(-140px) translateZ(${depth + 120}px) rotateX(0deg) rotateY(0deg) rotateZ(0deg)`;
+  const initTransform = `translateX(${offsetX}px) translateY(40px) translateZ(${depth - 40}px) ${baseRotate} scale(0.94)`;
 
   return (
     <div
@@ -309,23 +309,23 @@ export default function SeoCardStack() {
             className="relative w-full h-full"
             style={{
               transformStyle: "preserve-3d",
-              transform: "rotateX(-15deg) rotateY(30deg)",
+              transform: "rotateX(-8deg) rotateY(20deg)",
             }}
           >
             <Floor />
-            <Card index={4} offsetX={-200} depth={80} zIndex={60} ready={ready}>
+            <Card index={0} offsetX={-140} depth={80} zIndex={60} ready={ready}>
               <KeywordsCard />
             </Card>
-            <Card index={3} offsetX={-110} depth={60} zIndex={50} ready={ready}>
+            <Card index={1} offsetX={-70} depth={60} zIndex={50} ready={ready}>
               <RankingsCard />
             </Card>
-            <Card index={2} offsetX={-20} depth={40} zIndex={40} ready={ready}>
+            <Card index={2} offsetX={0} depth={40} zIndex={40} ready={ready}>
               <AuditCard />
             </Card>
-            <Card index={1} offsetX={70} depth={20} zIndex={30} ready={ready} highlight>
+            <Card index={3} offsetX={70} depth={20} zIndex={30} ready={ready}>
               <LiveSerpCard />
             </Card>
-            <Card index={0} offsetX={160} depth={0} zIndex={20} ready={ready}>
+            <Card index={4} offsetX={140} depth={0} zIndex={20} ready={ready}>
               <BacklinksCard />
             </Card>
           </div>
