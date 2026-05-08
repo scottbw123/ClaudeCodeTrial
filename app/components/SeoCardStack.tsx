@@ -31,6 +31,10 @@ function Card({ index, offsetX, depth, zIndex, highlight, ready, children }: Car
         (hover ? "border-sky-400/60" : highlight ? "border-sky-400/40" : "border-black/10")
       }
       style={{
+        top: "50%",
+        left: "50%",
+        marginTop: "-140px",
+        marginLeft: "-210px",
         zIndex: hover ? 100 : zIndex,
         transform: ready ? (hover ? hoverTransform : restTransform) : initTransform,
         opacity: ready ? 1 : 0,
@@ -296,13 +300,13 @@ export default function SeoCardStack() {
   }, []);
 
   return (
-    <div className="w-full py-12">
-      <h2 className="mb-12 text-center text-2xl font-semibold tracking-tight text-foreground select-none">
+    <div className="w-full pt-32 pb-16">
+      <h2 className="mb-20 text-center text-2xl font-semibold tracking-tight text-foreground select-none">
         Everything your SEO agency runs, in one stack
       </h2>
-      <div className="flex w-full items-center justify-center overflow-hidden min-h-[560px]">
+      <div className="flex w-full items-center justify-center min-h-[600px]">
         <div
-          className="relative h-[560px] w-full max-w-6xl flex items-center justify-center"
+          className="relative h-[600px] w-full max-w-6xl mx-auto"
           style={{ perspective: "2400px" }}
         >
           <div
