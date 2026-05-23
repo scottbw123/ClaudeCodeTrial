@@ -24,12 +24,19 @@ export async function listSites(): Promise<GscSite[]> {
     .map((s) => ({ siteUrl: s.siteUrl!, permissionLevel: s.permissionLevel! }));
 }
 
+export interface GscFilter {
+  dimension: GscDimension;
+  operator?: "contains" | "equals" | "notContains" | "notEquals";
+  expression: string;
+}
+
 export async function queryGsc(opts: {
   siteUrl: string;
   startDate: string;
   endDate: string;
   dimensions: GscDimension[];
   rowLimit?: number;
+  filters?: GscFilter[];
 }): Promise<GscRow[]> {
   const webmasters = google.webmasters({ version: "v3", auth: getOAuth2Client() });
   const { data } = await webmasters.searchanalytics.query({
@@ -39,6 +46,17 @@ export async function queryGsc(opts: {
       endDate: opts.endDate,
       dimensions: opts.dimensions,
       rowLimit: opts.rowLimit ?? 1000,
+      dimensionFilterGroups: opts.filters?.length
+        ? [
+            {
+              filters: opts.filters.map((f) => ({
+                dimension: f.dimension,
+                operator: f.operator ?? "equals",
+                expression: f.expression,
+              })),
+            },
+          ]
+        : undefined,
     },
   });
   return (data.rows ?? []).map((r) => ({
