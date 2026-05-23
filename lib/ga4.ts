@@ -18,6 +18,12 @@ export interface Ga4ReportResult {
   totals: string[];
 }
 
+export interface Ga4Filter {
+  fieldName: string;
+  matchType?: "EXACT" | "CONTAINS" | "BEGINS_WITH";
+  value: string;
+}
+
 export async function listProperties(): Promise<Ga4Property[]> {
   const admin = google.analyticsadmin({ version: "v1beta", auth: getOAuth2Client() });
   const { data } = await admin.accountSummaries.list({ pageSize: 200 });
@@ -35,6 +41,29 @@ export async function listProperties(): Promise<Ga4Property[]> {
   return out;
 }
 
+function buildDimensionFilter(filters: Ga4Filter[]) {
+  if (filters.length === 0) return undefined;
+  if (filters.length === 1) {
+    const f = filters[0];
+    return {
+      filter: {
+        fieldName: f.fieldName,
+        stringFilter: { matchType: f.matchType ?? "EXACT", value: f.value },
+      },
+    };
+  }
+  return {
+    andGroup: {
+      expressions: filters.map((f) => ({
+        filter: {
+          fieldName: f.fieldName,
+          stringFilter: { matchType: f.matchType ?? "EXACT", value: f.value },
+        },
+      })),
+    },
+  };
+}
+
 export async function runReport(opts: {
   propertyId: string;
   startDate: string;
@@ -43,6 +72,7 @@ export async function runReport(opts: {
   metrics: string[];
   limit?: number;
   orderByMetric?: { name: string; desc?: boolean };
+  filters?: Ga4Filter[];
 }): Promise<Ga4ReportResult> {
   const data = google.analyticsdata({ version: "v1beta", auth: getOAuth2Client() });
   const { data: resp } = await data.properties.runReport({
@@ -56,6 +86,7 @@ export async function runReport(opts: {
         ? [{ metric: { metricName: opts.orderByMetric.name }, desc: opts.orderByMetric.desc ?? true }]
         : undefined,
       metricAggregations: ["TOTAL"],
+      dimensionFilter: opts.filters && opts.filters.length > 0 ? buildDimensionFilter(opts.filters) : undefined,
     },
   });
   return {
