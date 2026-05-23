@@ -9,16 +9,10 @@ import { DeltaTable, type DeltaRow } from "./Tables";
 import { DemographicsSection, type DeviceRow, type CountryRow } from "./Demographics";
 import { ALPHA3_TO_NAME } from "./country-codes";
 
-interface PageProps {
-  searchParams: Promise<{
-    site?: string;
-    propertyId?: string;
-    days?: string;
-    start?: string;
-    end?: string;
-    filterQuery?: string;
-    filterPage?: string;
-  }>;
+interface Props {
+  searchParams: Record<string, string | undefined>;
+  gscHref: string;
+  ga4Href: string;
 }
 
 function aggregate(rows: { clicks: number; impressions: number; position: number }[]) {
@@ -87,9 +81,7 @@ function buildDeltaRows(current: GscRow[], previous: GscRow[]): DeltaRow[] {
   });
 }
 
-export default async function GscPresentationPage({ searchParams }: PageProps) {
-  const sp = await searchParams;
-
+export async function GscContent({ searchParams: sp, gscHref, ga4Href }: Props) {
   const sites = await listSites();
 
   const siteUrl = sp.site || sites[0]?.siteUrl || "";
@@ -280,19 +272,6 @@ export default async function GscPresentationPage({ searchParams }: PageProps) {
     .filter((c) => c.impressions > 0)
     .sort((a, b) => b.impressions - a.impressions);
 
-  const queryString = new URLSearchParams(
-    Object.fromEntries(
-      Object.entries({
-        site: siteUrl,
-        days: hasCustom ? "" : String(computedDays),
-        start: hasCustom ? range.startDate : "",
-        end: hasCustom ? range.endDate : "",
-        filterQuery,
-        filterPage,
-      }).filter(([, v]) => v)
-    )
-  ).toString();
-
   return (
     <main className="bg-white min-h-screen">
       <PresentationHeader
@@ -300,7 +279,8 @@ export default async function GscPresentationPage({ searchParams }: PageProps) {
         startDate={range.startDate}
         endDate={range.endDate}
         activeTab="gsc"
-        queryString={queryString}
+        gscHref={gscHref}
+        ga4Href={ga4Href}
       />
 
       <GscControls

@@ -7,17 +7,10 @@ import { Ga4Controls } from "./Controls";
 import { MetricSection, type MetricSectionData } from "../gsc/MetricSection";
 import { Ga4Tables } from "./Tables";
 
-interface PageProps {
-  searchParams: Promise<{
-    propertyId?: string;
-    days?: string;
-    start?: string;
-    end?: string;
-    channel?: string;
-    pageUrl?: string;
-    keyEvent?: string;
-    eventName?: string;
-  }>;
+interface Props {
+  searchParams: Record<string, string | undefined>;
+  gscHref: string;
+  ga4Href: string;
 }
 
 function pct(current: number, previous: number): number {
@@ -99,9 +92,7 @@ function sumMetric(rows: Ga4Row[], idx: number): number {
   return rows.reduce((s, r) => s + Number(r.metricValues[idx] ?? 0), 0);
 }
 
-export default async function Ga4PresentationPage({ searchParams }: PageProps) {
-  const sp = await searchParams;
-
+export async function Ga4Content({ searchParams: sp, gscHref, ga4Href }: Props) {
   const properties = await listProperties();
 
   const propertyId = sp.propertyId || properties[0]?.propertyId || "";
@@ -339,21 +330,6 @@ export default async function Ga4PresentationPage({ searchParams }: PageProps) {
     },
   ];
 
-  const queryString = new URLSearchParams(
-    Object.fromEntries(
-      Object.entries({
-        propertyId,
-        days: hasCustom ? "" : String(computedDays),
-        start: hasCustom ? range.startDate : "",
-        end: hasCustom ? range.endDate : "",
-        channel: sp.channel || "",
-        pageUrl: sp.pageUrl || "",
-        keyEvent: sp.keyEvent || "",
-        eventName: sp.eventName || "",
-      }).filter(([, v]) => v)
-    )
-  ).toString();
-
   return (
     <main className="bg-white min-h-screen">
       <PresentationHeader
@@ -361,7 +337,8 @@ export default async function Ga4PresentationPage({ searchParams }: PageProps) {
         startDate={range.startDate}
         endDate={range.endDate}
         activeTab="ga4"
-        queryString={queryString}
+        gscHref={gscHref}
+        ga4Href={ga4Href}
       />
 
       <Ga4Controls

@@ -6,16 +6,16 @@ export function PresentationHeader({
   startDate,
   endDate,
   activeTab,
-  queryString,
+  gscHref,
+  ga4Href,
 }: {
   title: string;
   startDate: string;
   endDate: string;
   activeTab: "gsc" | "ga4";
-  queryString: string;
+  gscHref: string;
+  ga4Href: string;
 }) {
-  const qs = queryString ? `?${queryString}` : "";
-
   return (
     <header className="bg-black text-white">
       <div className="max-w-[1400px] mx-auto px-6 py-4 grid grid-cols-3 items-center">
@@ -32,7 +32,7 @@ export function PresentationHeader({
         <div className="justify-self-end inline-flex items-center gap-3">
           <nav className="inline-flex items-center gap-1 bg-neutral-900 rounded-md p-1">
             <Link
-              href={`/reports/presentation/gsc${qs}`}
+              href={gscHref}
               className={`px-3 py-1 text-sm rounded-md transition-colors ${
                 activeTab === "gsc" ? "bg-white text-black" : "text-gray-300 hover:text-white"
               }`}
@@ -40,7 +40,7 @@ export function PresentationHeader({
               GSC
             </Link>
             <Link
-              href={`/reports/presentation/ga4${qs}`}
+              href={ga4Href}
               className={`px-3 py-1 text-sm rounded-md transition-colors ${
                 activeTab === "ga4" ? "bg-white text-black" : "text-gray-300 hover:text-white"
               }`}
