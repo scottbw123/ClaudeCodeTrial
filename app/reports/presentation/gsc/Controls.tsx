@@ -3,7 +3,7 @@
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState, useTransition } from "react";
 import type { GscSite } from "@/lib/gsc";
-import { Combobox } from "../components/Combobox";
+import { Combobox, type FilterMode } from "../components/Combobox";
 import { RefreshButton } from "../components/RefreshButton";
 
 const PRESET_DAYS = [
@@ -22,7 +22,9 @@ export function GscControls({
   currentStart,
   currentEnd,
   currentQueries,
+  currentQueriesMode,
   currentPages,
+  currentPagesMode,
   queryOptions,
   pageOptions,
 }: {
@@ -32,7 +34,9 @@ export function GscControls({
   currentStart: string;
   currentEnd: string;
   currentQueries: string[];
+  currentQueriesMode: FilterMode;
   currentPages: string[];
+  currentPagesMode: FilterMode;
   queryOptions: string[];
   pageOptions: string[];
 }) {
@@ -41,11 +45,15 @@ export function GscControls({
   const [pending, startTransition] = useTransition();
 
   const [localQueries, setLocalQueries] = useState(currentQueries);
+  const [localQueriesMode, setLocalQueriesMode] = useState<FilterMode>(currentQueriesMode);
   const [localPages, setLocalPages] = useState(currentPages);
+  const [localPagesMode, setLocalPagesMode] = useState<FilterMode>(currentPagesMode);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => setLocalQueries(currentQueries), [currentQueries.join(",")]);
+  useEffect(() => setLocalQueriesMode(currentQueriesMode), [currentQueriesMode]);
   useEffect(() => setLocalPages(currentPages), [currentPages.join(",")]);
+  useEffect(() => setLocalPagesMode(currentPagesMode), [currentPagesMode]);
 
   function buildSp(updates: Record<string, string | null>) {
     const sp = new URLSearchParams(searchParams.toString());
@@ -78,29 +86,43 @@ export function GscControls({
           values={currentSite ? [currentSite] : []}
           options={sites.map((s) => s.siteUrl)}
           onChange={(vs) =>
-            pushImmediate({ site: vs[0] ?? null, filterQuery: null, filterPage: null })
+            pushImmediate({
+              site: vs[0] ?? null,
+              filterQuery: null, filterQueryMode: null,
+              filterPage: null, filterPageMode: null,
+            })
           }
           placeholder="Select a site…"
         />
         <Combobox
           label="Landing Page (multi-select)"
           values={localPages}
+          mode={localPagesMode}
           options={pageOptions}
           multi
-          onChange={(vs) => {
+          onChange={(vs, mode) => {
             setLocalPages(vs);
-            pushDebounced({ filterPage: vs.length ? vs.join(",") : null });
+            setLocalPagesMode(mode);
+            pushDebounced({
+              filterPage: vs.length ? vs.join(",") : null,
+              filterPageMode: mode === "exclude" ? "exclude" : null,
+            });
           }}
           placeholder="All pages"
         />
         <Combobox
           label="Query (multi-select)"
           values={localQueries}
+          mode={localQueriesMode}
           options={queryOptions}
           multi
-          onChange={(vs) => {
+          onChange={(vs, mode) => {
             setLocalQueries(vs);
-            pushDebounced({ filterQuery: vs.length ? vs.join(",") : null });
+            setLocalQueriesMode(mode);
+            pushDebounced({
+              filterQuery: vs.length ? vs.join(",") : null,
+              filterQueryMode: mode === "exclude" ? "exclude" : null,
+            });
           }}
           placeholder="All queries"
         />

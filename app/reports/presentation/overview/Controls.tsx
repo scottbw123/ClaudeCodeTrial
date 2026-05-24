@@ -25,7 +25,8 @@ export function OverviewControls({
   currentStart,
   currentEnd,
   currentBranded,
-  currentNonApp,
+  currentEvents,
+  eventOptions,
 }: {
   sites: GscSite[];
   properties: Ga4Property[];
@@ -35,19 +36,20 @@ export function OverviewControls({
   currentStart: string;
   currentEnd: string;
   currentBranded: string[];
-  currentNonApp: string;
+  currentEvents: string[];
+  eventOptions: string[];
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [pending, startTransition] = useTransition();
 
   const [localBranded, setLocalBranded] = useState(currentBranded);
-  const [localNonApp, setLocalNonApp] = useState(currentNonApp);
+  const [localEvents, setLocalEvents] = useState(currentEvents);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [draftBranded, setDraftBranded] = useState("");
 
   useEffect(() => setLocalBranded(currentBranded), [currentBranded.join(",")]);
-  useEffect(() => setLocalNonApp(currentNonApp), [currentNonApp]);
+  useEffect(() => setLocalEvents(currentEvents), [currentEvents.join(",")]);
 
   function buildSp(updates: Record<string, string | null>) {
     const sp = new URLSearchParams(searchParams.toString());
@@ -150,28 +152,21 @@ export function OverviewControls({
             />
           </div>
           <span className="text-[10px] text-gray-400 mt-1">
-            Used for branded vs non-branded splits. Matches any query containing the term.
+            Splits queries into Branded vs Non-Branded via substring match on the query text.
           </span>
         </div>
 
-        <div className="flex flex-col">
-          <span className="text-[10px] uppercase tracking-wide text-gray-500 mb-1">
-            Non-App URL pattern (excluded from "Non-App" metrics)
-          </span>
-          <input
-            type="text"
-            value={localNonApp}
-            onChange={(e) => {
-              setLocalNonApp(e.target.value);
-              pushDebounced({ nonApp: e.target.value || null });
-            }}
-            placeholder="e.g. /app/  or  app.example.com"
-            className="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm"
-          />
-          <span className="text-[10px] text-gray-400 mt-1">
-            URLs / pages containing this pattern are excluded from Non-App metrics.
-          </span>
-        </div>
+        <Combobox
+          label="Events to count as conversions (multi-select)"
+          values={localEvents}
+          options={eventOptions}
+          multi
+          onChange={(vs) => {
+            setLocalEvents(vs);
+            pushDebounced({ events: vs.length ? vs.join(",") : null });
+          }}
+          placeholder="All events"
+        />
       </div>
 
       <div className="flex flex-wrap items-end gap-3 border-t border-gray-100 pt-3">

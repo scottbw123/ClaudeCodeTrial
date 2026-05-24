@@ -106,6 +106,19 @@ function mergeRows(rows: GscRow[]): GscRow[] {
   return Array.from(grouped.values()).sort((a, b) => b.impressions - a.impressions);
 }
 
+export type FilterMode = "include" | "exclude";
+
+function buildExcludeFilters(dimension: GscDimension, values: string[]): GscFilter[] {
+  if (values.length === 0) return [];
+  const out: GscFilter[] = [];
+  for (let i = 0; i < values.length; i += FILTER_BATCH_SIZE) {
+    const batch = values.slice(i, i + FILTER_BATCH_SIZE);
+    const escaped = batch.map(escapeRegex).join("|");
+    out.push({ dimension, operator: "excludingRegex", expression: `^(${escaped})$` });
+  }
+  return out;
+}
+
 export async function queryGscFiltered(opts: {
   siteUrl: string;
   startDate: string;
@@ -113,16 +126,36 @@ export async function queryGscFiltered(opts: {
   dimensions: GscDimension[];
   rowLimit?: number;
   filterQueries?: string[];
+  filterQueriesMode?: FilterMode;
   filterPages?: string[];
+  filterPagesMode?: FilterMode;
 }): Promise<GscRow[]> {
   const queries = opts.filterQueries ?? [];
+  const queriesMode = opts.filterQueriesMode ?? "include";
   const pages = opts.filterPages ?? [];
+  const pagesMode = opts.filterPagesMode ?? "include";
 
-  if (queries.length <= FILTER_BATCH_SIZE && pages.length <= FILTER_BATCH_SIZE) {
-    const filters: GscFilter[] = [];
-    const q = buildRegexFilter("query", queries);
+  // Resolve effective include/exclude per dimension
+  const queryIncludeValues = queriesMode === "include" ? queries : [];
+  const queryExcludeValues = queriesMode === "exclude" ? queries : [];
+  const pageIncludeValues = pagesMode === "include" ? pages : [];
+  const pageExcludeValues = pagesMode === "exclude" ? pages : [];
+
+  // Exclude filters always go into the same single query — they AND together natively.
+  const excludeFilters = [
+    ...buildExcludeFilters("query", queryExcludeValues),
+    ...buildExcludeFilters("page", pageExcludeValues),
+  ];
+
+  // Include filters: if both are small enough, one query; otherwise batch the larger one.
+  const needsQueryBatch = queryIncludeValues.length > FILTER_BATCH_SIZE;
+  const needsPageBatch = pageIncludeValues.length > FILTER_BATCH_SIZE;
+
+  if (!needsQueryBatch && !needsPageBatch) {
+    const filters: GscFilter[] = [...excludeFilters];
+    const q = buildRegexFilter("query", queryIncludeValues);
     if (q) filters.push(q);
-    const p = buildRegexFilter("page", pages);
+    const p = buildRegexFilter("page", pageIncludeValues);
     if (p) filters.push(p);
     return queryGsc({
       siteUrl: opts.siteUrl,
@@ -134,10 +167,10 @@ export async function queryGscFiltered(opts: {
     });
   }
 
-  const batchDim: GscDimension = queries.length >= pages.length ? "query" : "page";
-  const batchValues = batchDim === "query" ? queries : pages;
+  const batchDim: GscDimension = queryIncludeValues.length >= pageIncludeValues.length ? "query" : "page";
+  const batchValues = batchDim === "query" ? queryIncludeValues : pageIncludeValues;
   const otherDim: GscDimension = batchDim === "query" ? "page" : "query";
-  const otherValues = batchDim === "query" ? pages : queries;
+  const otherValues = batchDim === "query" ? pageIncludeValues : queryIncludeValues;
 
   const batches: string[][] = [];
   for (let i = 0; i < batchValues.length; i += FILTER_BATCH_SIZE) {
@@ -145,7 +178,7 @@ export async function queryGscFiltered(opts: {
   }
 
   const promises = batches.map((batch) => {
-    const filters: GscFilter[] = [];
+    const filters: GscFilter[] = [...excludeFilters];
     const bf = buildRegexFilter(batchDim, batch);
     if (bf) filters.push(bf);
     const of = buildRegexFilter(otherDim, otherValues);
