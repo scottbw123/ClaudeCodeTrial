@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { UrlCell } from "../components/UrlCell";
 
 export interface DeltaRow {
   key: string;
@@ -143,7 +144,9 @@ export function DeltaTable({
             {sorted.map((r, i) => (
               <tr key={r.key} className={i % 2 === 0 ? "bg-white" : "bg-gray-50"}>
                 <td className="px-4 py-1.5 text-gray-500">{i + 1}.</td>
-                <td className="px-4 py-1.5 text-gray-900 max-w-[420px] truncate" title={r.key}>{r.key}</td>
+                <td className="px-4 py-1.5 text-gray-900 max-w-[420px]">
+                  <UrlCell url={r.key} />
+                </td>
                 <td className="px-4 py-1.5 text-right tabular-nums">{fmtInt(r.impressions.current)}</td>
                 <td className="px-4 py-1.5 text-right"><Delta change={r.impressions.changePercent} /></td>
                 <td className="px-4 py-1.5 text-right tabular-nums">{fmtInt(r.clicks.current)}</td>

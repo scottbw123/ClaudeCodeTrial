@@ -100,7 +100,21 @@ export function TopSourcesDonut({
                   <Cell key={d.name} fill={colorForAiSource(d.name)} />
                 ))}
               </Pie>
-              <Tooltip formatter={(v) => new Intl.NumberFormat("en-US").format(Number(v))} />
+              <Tooltip
+                formatter={(v) => new Intl.NumberFormat("en-US").format(Number(v))}
+                contentStyle={{
+                  background: "rgba(17, 24, 39, 0.95)",
+                  border: "none",
+                  color: "#fff",
+                  fontSize: 11,
+                  padding: "6px 10px",
+                  boxShadow: "0 4px 12px rgba(0,0,0,0.25)",
+                }}
+                itemStyle={{ color: "#fff" }}
+                labelStyle={{ color: "#fff" }}
+                cursor={false}
+                position={{ x: 0, y: -8 }}
+              />
             </PieChart>
           </ResponsiveContainer>
           <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-center pointer-events-none">

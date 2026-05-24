@@ -1,4 +1,28 @@
 import { listProperties, runReport, type Ga4Filter, type Ga4Row } from "@/lib/ga4";
+import { normalizePageUrl } from "@/lib/gsc";
+
+function normalizePageRows(rows: Ga4Row[]): Ga4Row[] {
+  const grouped = new Map<string, Ga4Row>();
+  for (const r of rows) {
+    const url = r.dimensionValues[0] ?? "";
+    const norm = normalizePageUrl(url);
+    const existing = grouped.get(norm);
+    if (!existing) {
+      grouped.set(norm, {
+        dimensionValues: [norm, ...r.dimensionValues.slice(1)],
+        metricValues: [...r.metricValues],
+      });
+    } else {
+      for (let i = 0; i < r.metricValues.length; i++) {
+        const sum = Number(existing.metricValues[i] ?? 0) + Number(r.metricValues[i] ?? 0);
+        existing.metricValues[i] = String(sum);
+      }
+    }
+  }
+  return Array.from(grouped.values()).sort((a, b) =>
+    Number(b.metricValues[0] ?? 0) - Number(a.metricValues[0] ?? 0)
+  );
+}
 import { previousPeriod, rangeFromDays, daysBetween } from "@/lib/date-utils";
 import { PresentationHeader } from "../components/Header";
 import { PresentationFooter } from "../components/Footer";
@@ -372,7 +396,7 @@ export async function Ga4Content({ searchParams: sp, overviewHref, gscHref, ga4H
         currentKeyEvent={sp.keyEvent || ""}
         currentEventNames={eventNames}
         channelOptions={channelOptions}
-        pageOptions={pageOptions}
+        pageOptions={Array.from(new Set(pageOptions.map(normalizePageUrl).filter(Boolean)))}
         eventOptions={eventOptions}
       />
 
@@ -396,7 +420,7 @@ export async function Ga4Content({ searchParams: sp, overviewHref, gscHref, ga4H
         ))}
       </section>
 
-      <Ga4Tables trafficSources={trafficSources} events={events} pagePerformance={pagePerformance} />
+      <Ga4Tables trafficSources={trafficSources} events={events} pagePerformance={normalizePageRows(pagePerformance)} />
 
       <PresentationFooter generatedAt={new Date()} />
     </main>

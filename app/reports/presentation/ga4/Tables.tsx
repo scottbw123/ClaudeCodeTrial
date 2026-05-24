@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import type { Ga4Row } from "@/lib/ga4";
+import { UrlCell } from "../components/UrlCell";
 
 function fmtInt(n: number): string {
   return new Intl.NumberFormat("en-US").format(Math.round(n));
@@ -66,7 +67,10 @@ function SortableTable({ title, description, columns, rows }: SortableTableProps
     const v = valueFor(row, col);
     switch (col.type) {
       case "string":
-        return <span className="truncate" title={String(v)}>{String(v)}</span>;
+        // URLs deserve a portal-based tooltip; other strings just truncate.
+        return String(v).startsWith("http") || String(v).startsWith("/")
+          ? <UrlCell url={String(v)} />
+          : <span className="truncate" title={String(v)}>{String(v)}</span>;
       case "int":
         return fmtInt(Number(v));
       case "pct":

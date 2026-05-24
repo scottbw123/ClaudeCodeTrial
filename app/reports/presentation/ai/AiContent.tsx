@@ -1,9 +1,29 @@
 import { listProperties, runReport, type Ga4Filter, type Ga4Row } from "@/lib/ga4";
+import { normalizePageUrl } from "@/lib/gsc";
 import { previousPeriod, rangeFromDays, daysBetween } from "@/lib/date-utils";
 import { AI_SOURCES } from "@/lib/ai-sources";
 import { PresentationHeader } from "../components/Header";
 import { PresentationFooter } from "../components/Footer";
+import { UrlCell } from "../components/UrlCell";
 import { AiControls } from "./Controls";
+
+function normalizePagesGa4(rows: Ga4Row[]): Ga4Row[] {
+  const grouped = new Map<string, Ga4Row>();
+  for (const r of rows) {
+    const norm = normalizePageUrl(r.dimensionValues[0] ?? "");
+    const existing = grouped.get(norm);
+    if (!existing) {
+      grouped.set(norm, { dimensionValues: [norm], metricValues: [...r.metricValues] });
+    } else {
+      for (let i = 0; i < r.metricValues.length; i++) {
+        existing.metricValues[i] = String(Number(existing.metricValues[i] ?? 0) + Number(r.metricValues[i] ?? 0));
+      }
+    }
+  }
+  return Array.from(grouped.values()).sort((a, b) =>
+    Number(b.metricValues[0] ?? 0) - Number(a.metricValues[0] ?? 0)
+  );
+}
 import {
   SessionsLineChart,
   TopSourcesDonut,
@@ -277,8 +297,8 @@ export async function AiContent({ searchParams: sp, overviewHref, gscHref, ga4Hr
         value: Number(r.metricValues[0] ?? 0),
       }));
 
-      pagesRows = pagesCurrent.rows;
-      prevPagesByPath = new Map(pagesPrev.rows.map((r) => [r.dimensionValues[0] ?? "", r]));
+      pagesRows = normalizePagesGa4(pagesCurrent.rows);
+      prevPagesByPath = new Map(normalizePagesGa4(pagesPrev.rows).map((r) => [r.dimensionValues[0] ?? "", r]));
 
       sourceWeeklyRows = sourceByDate.rows;
       trafficSourceRows = trafficSrc.rows;
@@ -289,7 +309,7 @@ export async function AiContent({ searchParams: sp, overviewHref, gscHref, ga4Hr
       eventsRows = eventsCurrent.rows;
       prevEventsByName = new Map(eventsPrev.rows.map((r) => [r.dimensionValues[0] ?? "", r]));
       eventsWeeklyRows = eventsByDate.rows;
-      pageOptions = pageOpts.rows.map((r) => r.dimensionValues[0] ?? "").filter(Boolean);
+      pageOptions = Array.from(new Set(pageOpts.rows.map((r) => normalizePageUrl(r.dimensionValues[0] ?? "")).filter(Boolean)));
       eventOptions = eventOpts.rows.map((r) => r.dimensionValues[0] ?? "").filter(Boolean);
     } catch (err) {
       fetchError = err instanceof Error ? err.message : String(err);
@@ -410,7 +430,9 @@ export async function AiContent({ searchParams: sp, overviewHref, gscHref, ga4Hr
                   return (
                     <tr key={i} className={i % 2 === 0 ? "bg-white" : "bg-gray-50"}>
                       <td className="px-3 py-1.5 text-gray-500">{i + 1}.</td>
-                      <td className="px-3 py-1.5 text-gray-900 max-w-[280px] truncate" title={page}>{page}</td>
+                      <td className="px-3 py-1.5 text-gray-900 max-w-[280px]">
+                        <UrlCell url={page} />
+                      </td>
                       <td className="px-3 py-1.5 text-right tabular-nums">{formatBig(sessions)}</td>
                       <td className="px-3 py-1.5 text-right text-xs">
                         {prev ? (
