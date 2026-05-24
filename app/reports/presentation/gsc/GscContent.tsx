@@ -11,8 +11,10 @@ import { ALPHA3_TO_NAME } from "./country-codes";
 
 interface Props {
   searchParams: Record<string, string | undefined>;
+  overviewHref: string;
   gscHref: string;
   ga4Href: string;
+  aiHref: string;
 }
 
 function aggregate(rows: { clicks: number; impressions: number; position: number }[]) {
@@ -81,7 +83,7 @@ function buildDeltaRows(current: GscRow[], previous: GscRow[]): DeltaRow[] {
   });
 }
 
-export async function GscContent({ searchParams: sp, gscHref, ga4Href }: Props) {
+export async function GscContent({ searchParams: sp, overviewHref, gscHref, ga4Href, aiHref }: Props) {
   const sites = await listSites();
 
   const siteUrl = sp.site || sites[0]?.siteUrl || "";
@@ -94,19 +96,30 @@ export async function GscContent({ searchParams: sp, gscHref, ga4Href }: Props) 
   const computedDays = daysBetween(range.startDate, range.endDate);
   const compareRange = previousPeriod(range.startDate, range.endDate);
 
+  const MAX_FILTER_VALUES = 100;
+  const filterWarnings: string[] = [];
+
+  function buildRegexFilter(dimension: "query" | "page", values: string[]): GscFilter | null {
+    if (values.length === 0) return null;
+    if (values.length === 1) {
+      return { dimension, operator: "equals", expression: values[0] };
+    }
+    let useValues = values;
+    if (values.length > MAX_FILTER_VALUES) {
+      useValues = values.slice(0, MAX_FILTER_VALUES);
+      filterWarnings.push(
+        `${dimension} filter capped at first ${MAX_FILTER_VALUES} of ${values.length} selections (GSC regex limit).`
+      );
+    }
+    const escaped = useValues.map(escapeRegex).join("|");
+    return { dimension, operator: "includingRegex", expression: `^(${escaped})$` };
+  }
+
   const filters: GscFilter[] = [];
-  if (filterQueries.length === 1) {
-    filters.push({ dimension: "query", operator: "equals", expression: filterQueries[0] });
-  } else if (filterQueries.length > 1) {
-    const regex = filterQueries.map(escapeRegex).join("|");
-    filters.push({ dimension: "query", operator: "includingRegex", expression: regex });
-  }
-  if (filterPages.length === 1) {
-    filters.push({ dimension: "page", operator: "equals", expression: filterPages[0] });
-  } else if (filterPages.length > 1) {
-    const regex = filterPages.map(escapeRegex).join("|");
-    filters.push({ dimension: "page", operator: "includingRegex", expression: regex });
-  }
+  const qf = buildRegexFilter("query", filterQueries);
+  if (qf) filters.push(qf);
+  const pf = buildRegexFilter("page", filterPages);
+  if (pf) filters.push(pf);
 
   const range30 = rangeFromDays(30);
   const range90 = rangeFromDays(90);
@@ -295,8 +308,10 @@ export async function GscContent({ searchParams: sp, gscHref, ga4Href }: Props) 
         startDate={range.startDate}
         endDate={range.endDate}
         activeTab="gsc"
+        overviewHref={overviewHref}
         gscHref={gscHref}
         ga4Href={ga4Href}
+        aiHref={aiHref}
       />
 
       <GscControls
@@ -311,6 +326,11 @@ export async function GscContent({ searchParams: sp, gscHref, ga4Href }: Props) 
         pageOptions={pageOptionsRows.map((r) => r.keys[0] ?? "").filter(Boolean)}
       />
 
+      {filterWarnings.length > 0 && (
+        <div className="max-w-[1400px] mx-auto px-6 mt-4 rounded-lg bg-amber-50 border border-amber-200 px-4 py-2 text-xs text-amber-800">
+          {filterWarnings.map((w, i) => <div key={i}>{w}</div>)}
+        </div>
+      )}
       {fetchError && (
         <div className="max-w-[1400px] mx-auto px-6 mt-6 rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
           {fetchError}

@@ -9,8 +9,10 @@ import { Ga4Tables } from "./Tables";
 
 interface Props {
   searchParams: Record<string, string | undefined>;
+  overviewHref: string;
   gscHref: string;
   ga4Href: string;
+  aiHref: string;
 }
 
 function pct(current: number, previous: number): number {
@@ -92,7 +94,7 @@ function sumMetric(rows: Ga4Row[], idx: number): number {
   return rows.reduce((s, r) => s + Number(r.metricValues[idx] ?? 0), 0);
 }
 
-export async function Ga4Content({ searchParams: sp, gscHref, ga4Href }: Props) {
+export async function Ga4Content({ searchParams: sp, overviewHref, gscHref, ga4Href, aiHref }: Props) {
   const properties = await listProperties();
 
   const propertyId = sp.propertyId || properties[0]?.propertyId || "";
@@ -353,8 +355,10 @@ export async function Ga4Content({ searchParams: sp, gscHref, ga4Href }: Props) 
         startDate={range.startDate}
         endDate={range.endDate}
         activeTab="ga4"
+        overviewHref={overviewHref}
         gscHref={gscHref}
         ga4Href={ga4Href}
+        aiHref={aiHref}
       />
 
       <Ga4Controls
