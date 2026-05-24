@@ -1,5 +1,7 @@
 import { formatHumanDate } from "@/lib/date-utils";
 import { TabLink } from "./TabLink";
+import { TabNav } from "./TabNav";
+import { NavigationProvider } from "./NavigationContext";
 
 export type PresentationTab = "gsc" | "ga4" | "ai" | "overview";
 
@@ -22,6 +24,13 @@ export function PresentationHeader({
   ga4Href: string;
   aiHref: string;
 }) {
+  const tabs = [
+    { id: "overview" as const, href: overviewHref, label: "Overview" },
+    { id: "gsc" as const, href: gscHref, label: "GSC" },
+    { id: "ga4" as const, href: ga4Href, label: "GA4" },
+    { id: "ai" as const, href: aiHref, label: "AI" },
+  ];
+
   return (
     <header className="bg-black text-white">
       <div className="max-w-[1400px] mx-auto px-6 py-4 grid grid-cols-2 gap-y-3 items-center">
@@ -39,13 +48,14 @@ export function PresentationHeader({
         {/* Top-right: page title */}
         <h1 className="text-right text-2xl font-bold m-0">{title}</h1>
 
-        {/* Bottom-left: tab nav */}
-        <nav className="inline-flex items-center gap-1 bg-black border border-neutral-800 p-1 justify-self-start">
-          <TabLink href={overviewHref} label="Overview" active={activeTab === "overview"} />
-          <TabLink href={gscHref} label="GSC" active={activeTab === "gsc"} />
-          <TabLink href={ga4Href} label="GA4" active={activeTab === "ga4"} />
-          <TabLink href={aiHref} label="AI" active={activeTab === "ai"} />
-        </nav>
+        {/* Bottom-left: tab nav with sliding background */}
+        <NavigationProvider>
+          <TabNav tabs={tabs} activeTab={activeTab}>
+            {tabs.map((t) => (
+              <TabLink key={t.id} href={t.href} label={t.label} active={activeTab === t.id} />
+            ))}
+          </TabNav>
+        </NavigationProvider>
 
         {/* Bottom-right: date range */}
         <div className="justify-self-end inline-flex items-center gap-2 bg-black border border-neutral-800 px-3 py-1.5 text-sm">

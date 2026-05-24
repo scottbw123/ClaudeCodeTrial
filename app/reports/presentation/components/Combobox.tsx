@@ -154,7 +154,7 @@ export function Combobox({
           <span className="text-gray-400 px-1">{placeholder ?? "Select…"}</span>
         ) : (
           <>
-            {values.slice(0, 2).map((v) => (
+            {values.slice(0, 10).map((v) => (
               <span key={`i-${v}`} className="inline-flex items-center gap-1 bg-indigo-50 text-indigo-800 px-1.5 py-0.5 text-xs border border-indigo-200">
                 <span className="truncate max-w-[120px]" title={`Include: ${v}`}>{v}</span>
                 <span
@@ -165,7 +165,7 @@ export function Combobox({
                 >×</span>
               </span>
             ))}
-            {excludeValues.slice(0, 2).map((v) => (
+            {excludeValues.slice(0, 10).map((v) => (
               <span key={`e-${v}`} className="inline-flex items-center gap-1 bg-rose-50 text-rose-800 px-1.5 py-0.5 text-xs border border-rose-200">
                 <span className="text-rose-400">−</span>
                 <span className="truncate max-w-[120px]" title={`Exclude: ${v}`}>{v}</span>
@@ -177,7 +177,7 @@ export function Combobox({
                 >×</span>
               </span>
             ))}
-            {totalChips > 4 && <span className="text-xs text-gray-500">+{totalChips - 4} more</span>}
+            {totalChips > 20 && <span className="text-xs text-gray-500">+{totalChips - 20} more</span>}
           </>
         )}
         <span className="ml-auto text-gray-400">▾</span>

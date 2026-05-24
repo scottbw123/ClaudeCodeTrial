@@ -91,6 +91,30 @@ function spark(daily: DailyRow[], idx: number): Sparkpoint[] {
   return daily.map((d) => ({ date: d.date, value: d.values[idx] ?? 0 }));
 }
 
+/**
+ * Non-Branded = Total − Branded. Computed point-by-point so the sums always
+ * reconcile (GSC excludes "anonymous" queries from any dimension filter).
+ */
+function deriveNonBranded(total: DailyRow[], branded: DailyRow[]): DailyRow[] {
+  const bByDate = new Map(branded.map((r) => [r.date, r.values]));
+  return total.map((t) => {
+    const b = bByDate.get(t.date) ?? [0, 0, 0, 0];
+    const totalImps = t.values[0] ?? 0;
+    const totalClicks = t.values[1] ?? 0;
+    const totalPos = t.values[3] ?? 0;
+    const bImps = b[0] ?? 0;
+    const bClicks = b[1] ?? 0;
+    const bPos = b[3] ?? 0;
+    const imps = Math.max(0, totalImps - bImps);
+    const clicks = Math.max(0, totalClicks - bClicks);
+    const ctr = imps > 0 ? clicks / imps : 0;
+    // Inverse of impression-weighted position:
+    // totalPos*totalImps = brandedPos*brandedImps + nbPos*nbImps
+    const pos = imps > 0 ? Math.max(0, (totalPos * totalImps - bPos * bImps) / imps) : 0;
+    return { date: t.date, values: [imps, clicks, ctr, pos] };
+  });
+}
+
 export async function OverviewContent({ searchParams: sp, overviewHref, gscHref, ga4Href, aiHref }: Props) {
   const [sites, properties] = await Promise.all([listSites(), listProperties()]);
   const siteUrl = sp.site || sites[0]?.siteUrl || "";
@@ -109,9 +133,9 @@ export async function OverviewContent({ searchParams: sp, overviewHref, gscHref,
   const brandedFilter: GscFilter[] = brandedRegex
     ? [{ dimension: "query", operator: "includingRegex", expression: `(${brandedRegex})` }]
     : [];
-  const nonBrandedFilter: GscFilter[] = brandedRegex
-    ? [{ dimension: "query", operator: "excludingRegex", expression: `(${brandedRegex})` }]
-    : [];
+  // Non-Branded is derived as Total − Branded so the sums always reconcile
+  // (GSC excludes "anonymous" queries from any dimension filter, which would
+  // otherwise leave a gap between Total and Branded + Non-Branded).
 
   const organicFilter: Ga4Filter[] = [{ fieldName: "sessionDefaultChannelGroup", value: "Organic Search" }];
   // AI Referral = AI sources arriving via referral medium specifically (not organic, etc.)
@@ -130,7 +154,6 @@ export async function OverviewContent({ searchParams: sp, overviewHref, gscHref,
   let fetchError: string | null = null;
   let gAll: DailyRow[] = [], gAllPrev: DailyRow[] = [];
   let gBranded: DailyRow[] = [], gBrandedPrev: DailyRow[] = [];
-  let gNonBranded: DailyRow[] = [], gNonBrandedPrev: DailyRow[] = [];
   let bounceDaily: DailyRow[] = [], bouncePrevDaily: DailyRow[] = [];
   let durDaily: DailyRow[] = [], durPrevDaily: DailyRow[] = [];
   let aiDaily: DailyRow[] = [], aiPrevDaily: DailyRow[] = [];
@@ -150,7 +173,6 @@ export async function OverviewContent({ searchParams: sp, overviewHref, gscHref,
       [
         gAll, gAllPrev,
         gBranded, gBrandedPrev,
-        gNonBranded, gNonBrandedPrev,
         bounceDaily, bouncePrevDaily,
         durDaily, durPrevDaily,
         aiDaily, aiPrevDaily,
@@ -162,8 +184,6 @@ export async function OverviewContent({ searchParams: sp, overviewHref, gscHref,
         gscDailySeries(siteUrl, compareRange.startDate, compareRange.endDate, []),
         gscDailySeries(siteUrl, range.startDate, range.endDate, brandedFilter),
         gscDailySeries(siteUrl, compareRange.startDate, compareRange.endDate, brandedFilter),
-        gscDailySeries(siteUrl, range.startDate, range.endDate, nonBrandedFilter),
-        gscDailySeries(siteUrl, compareRange.startDate, compareRange.endDate, nonBrandedFilter),
         ga4DailySeries(propertyId, range.startDate, range.endDate, "bounceRate", organicFilter),
         ga4DailySeries(propertyId, compareRange.startDate, compareRange.endDate, "bounceRate", organicFilter),
         ga4DailySeries(propertyId, range.startDate, range.endDate, "averageSessionDuration", organicFilter),
@@ -192,6 +212,9 @@ export async function OverviewContent({ searchParams: sp, overviewHref, gscHref,
   const brandedImpressionsPrev = sumIndex(gBrandedPrev, 0);
   const brandedClicks = sumIndex(gBranded, 1);
   const brandedClicksPrev = sumIndex(gBrandedPrev, 1);
+
+  const gNonBranded = deriveNonBranded(gAll, gBranded);
+  const gNonBrandedPrev = deriveNonBranded(gAllPrev, gBrandedPrev);
 
   const nbImpressions = sumIndex(gNonBranded, 0);
   const nbImpressionsPrev = sumIndex(gNonBrandedPrev, 0);

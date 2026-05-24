@@ -44,14 +44,17 @@ body {
   font-feature-settings: "tnum";
 }
 
-/* Page-navigation pending state: blur everything in <main> EXCEPT the <header>
-   so the tabs/title stay sharp while the data area below dims. */
+/* Page-navigation pending state: short transition in/out + slow pulse during load.
+   The new <main> element doesn't carry the data attr so it appears fresh. */
+@keyframes pending-pulse {
+  0%, 100% { opacity: 0.6;  filter: blur(2px); }
+  50%      { opacity: 0.4;  filter: blur(4px); }
+}
 main > :not(header) {
-  transition: filter 240ms ease-out, opacity 240ms ease-out;
+  transition: filter 140ms ease-out, opacity 140ms ease-out;
 }
 body[data-navigating="true"] main > :not(header) {
-  filter: blur(3px);
-  opacity: 0.55;
+  animation: pending-pulse 1800ms ease-in-out infinite;
+  transition: filter 140ms ease-in, opacity 140ms ease-in;
   pointer-events: none;
-  transition: filter 80ms ease-in, opacity 80ms ease-in;
 }
