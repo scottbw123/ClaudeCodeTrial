@@ -3,6 +3,7 @@
 import { useRouter, useSearchParams } from "next/navigation";
 import { useTransition } from "react";
 import type { Ga4Property } from "@/lib/ga4";
+import { Combobox } from "../components/Combobox";
 
 const PRESET_DAYS = [
   { label: "Last 30d", value: 30 },
@@ -17,10 +18,10 @@ export function Ga4Controls({
   currentDays,
   currentStart,
   currentEnd,
-  currentChannel,
-  currentPageUrl,
+  currentChannels,
+  currentPageUrls,
   currentKeyEvent,
-  currentEventName,
+  currentEventNames,
   channelOptions,
   pageOptions,
   eventOptions,
@@ -30,10 +31,10 @@ export function Ga4Controls({
   currentDays: number;
   currentStart: string;
   currentEnd: string;
-  currentChannel: string;
-  currentPageUrl: string;
+  currentChannels: string[];
+  currentPageUrls: string[];
   currentKeyEvent: string;
-  currentEventName: string;
+  currentEventNames: string[];
   channelOptions: string[];
   pageOptions: string[];
   eventOptions: string[];
@@ -55,41 +56,60 @@ export function Ga4Controls({
 
   return (
     <section className="max-w-[1400px] mx-auto px-6 pt-6">
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-3 mb-3">
-        <Select
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 mb-3">
+        <Combobox
           label="GA4 property"
-          value={currentProperty}
-          onChange={(v) => update({ propertyId: v, channel: null, pageUrl: null, keyEvent: null, eventName: null })}
-          options={properties.map((p) => ({ value: p.propertyId, label: `${p.accountName} — ${p.propertyName}` }))}
+          values={currentProperty ? [propertyLabelById(properties, currentProperty)] : []}
+          options={properties.map((p) => `${p.accountName} — ${p.propertyName}`)}
+          onChange={(vs) => {
+            const label = vs[0];
+            const match = properties.find((p) => `${p.accountName} — ${p.propertyName}` === label);
+            update({
+              propertyId: match?.propertyId ?? null,
+              channel: null,
+              pageUrl: null,
+              keyEvent: null,
+              eventName: null,
+            });
+          }}
+          placeholder="Select a property…"
         />
-        <Select
-          label="Channel"
-          value={currentChannel}
-          onChange={(v) => update({ channel: v })}
-          options={[{ value: "", label: "All channels" }, ...channelOptions.map((c) => ({ value: c, label: c }))]}
+        <Combobox
+          label="Channel (multi-select)"
+          values={currentChannels}
+          options={channelOptions}
+          multi
+          onChange={(vs) => update({ channel: vs.length ? vs.join(",") : null })}
+          placeholder="All channels"
         />
-        <Select
-          label="Page URL"
-          value={currentPageUrl}
-          onChange={(v) => update({ pageUrl: v })}
-          options={[{ value: "", label: "All pages" }, ...pageOptions.map((p) => ({ value: p, label: p }))]}
+        <Combobox
+          label="Page URL contains (multi-select)"
+          values={currentPageUrls}
+          options={pageOptions}
+          multi
+          onChange={(vs) => update({ pageUrl: vs.length ? vs.join(",") : null })}
+          placeholder="All pages"
         />
-        <Select
-          label="Key event only?"
-          value={currentKeyEvent}
-          onChange={(v) => update({ keyEvent: v })}
-          options={[
-            { value: "", label: "Any" },
-            { value: "true", label: "Key events only" },
-            { value: "false", label: "Non-key only" },
-          ]}
+        <Combobox
+          label="Event name (multi-select)"
+          values={currentEventNames}
+          options={eventOptions}
+          multi
+          onChange={(vs) => update({ eventName: vs.length ? vs.join(",") : null })}
+          placeholder="All events"
         />
-        <Select
-          label="Event name"
-          value={currentEventName}
-          onChange={(v) => update({ eventName: v })}
-          options={[{ value: "", label: "All events" }, ...eventOptions.map((e) => ({ value: e, label: e }))]}
-        />
+        <label className="flex flex-col">
+          <span className="text-[10px] uppercase tracking-wide text-gray-500 mb-1">Key event filter</span>
+          <select
+            className="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            value={currentKeyEvent}
+            onChange={(e) => update({ keyEvent: e.target.value || null })}
+          >
+            <option value="">Any</option>
+            <option value="true">Key events only</option>
+            <option value="false">Non-key only</option>
+          </select>
+        </label>
       </div>
 
       <div className="flex flex-wrap items-end gap-3 border-t border-gray-100 pt-3">
@@ -139,31 +159,7 @@ export function Ga4Controls({
   );
 }
 
-function Select({
-  label,
-  value,
-  onChange,
-  options,
-}: {
-  label: string;
-  value: string;
-  onChange: (v: string) => void;
-  options: { value: string; label: string }[];
-}) {
-  return (
-    <label className="flex flex-col">
-      <span className="text-[10px] uppercase tracking-wide text-gray-500 mb-1">{label}</span>
-      <select
-        className="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-      >
-        {options.map((o) => (
-          <option key={o.value} value={o.value}>
-            {o.label.length > 80 ? o.label.slice(0, 77) + "…" : o.label}
-          </option>
-        ))}
-      </select>
-    </label>
-  );
+function propertyLabelById(properties: Ga4Property[], id: string): string {
+  const p = properties.find((p) => p.propertyId === id);
+  return p ? `${p.accountName} — ${p.propertyName}` : id;
 }

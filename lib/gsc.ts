@@ -26,8 +26,12 @@ export async function listSites(): Promise<GscSite[]> {
 
 export interface GscFilter {
   dimension: GscDimension;
-  operator?: "contains" | "equals" | "notContains" | "notEquals";
+  operator?: "contains" | "equals" | "notContains" | "notEquals" | "includingRegex" | "excludingRegex";
   expression: string;
+}
+
+export function escapeRegex(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 export async function queryGsc(opts: {
@@ -36,6 +40,7 @@ export async function queryGsc(opts: {
   endDate: string;
   dimensions: GscDimension[];
   rowLimit?: number;
+  startRow?: number;
   filters?: GscFilter[];
 }): Promise<GscRow[]> {
   const webmasters = google.webmasters({ version: "v3", auth: getOAuth2Client() });
@@ -46,6 +51,7 @@ export async function queryGsc(opts: {
       endDate: opts.endDate,
       dimensions: opts.dimensions,
       rowLimit: opts.rowLimit ?? 1000,
+      startRow: opts.startRow ?? 0,
       dimensionFilterGroups: opts.filters?.length
         ? [
             {
@@ -66,4 +72,26 @@ export async function queryGsc(opts: {
     ctr: r.ctr ?? 0,
     position: r.position ?? 0,
   }));
+}
+
+const GSC_MAX_ROWS_PER_REQUEST = 25000;
+
+export async function queryGscPaginated(
+  opts: Omit<Parameters<typeof queryGsc>[0], "rowLimit" | "startRow">,
+  maxRows: number
+): Promise<GscRow[]> {
+  const pages = Math.ceil(maxRows / GSC_MAX_ROWS_PER_REQUEST);
+  const promises: Promise<GscRow[]>[] = [];
+  for (let i = 0; i < pages; i++) {
+    const remaining = maxRows - i * GSC_MAX_ROWS_PER_REQUEST;
+    promises.push(
+      queryGsc({
+        ...opts,
+        rowLimit: Math.min(GSC_MAX_ROWS_PER_REQUEST, remaining),
+        startRow: i * GSC_MAX_ROWS_PER_REQUEST,
+      })
+    );
+  }
+  const results = await Promise.all(promises);
+  return results.flat();
 }

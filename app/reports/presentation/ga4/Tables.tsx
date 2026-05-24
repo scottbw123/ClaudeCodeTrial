@@ -1,3 +1,6 @@
+"use client";
+
+import { useState } from "react";
 import type { Ga4Row } from "@/lib/ga4";
 
 function fmtInt(n: number): string {
@@ -14,6 +17,125 @@ function fmtDuration(seconds: number): string {
   return `${m}m ${s.toString().padStart(2, "0")}s`;
 }
 
+interface SortableTableProps {
+  title: string;
+  description: string;
+  columns: {
+    key: string;
+    label: string;
+    align?: "left" | "right" | "center";
+    type: "string" | "int" | "pct" | "duration" | "decimal" | "key-badge";
+    dimensionIndex?: number;
+    metricIndex?: number;
+  }[];
+  rows: Ga4Row[];
+}
+
+function SortableTable({ title, description, columns, rows }: SortableTableProps) {
+  const defaultSort = columns.find((c) => c.type === "int")?.key ?? columns[0].key;
+  const [sortKey, setSortKey] = useState<string>(defaultSort);
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
+
+  function clickHeader(key: string) {
+    if (sortKey === key) {
+      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    } else {
+      setSortKey(key);
+      setSortDir("desc");
+    }
+  }
+
+  function valueFor(row: Ga4Row, col: SortableTableProps["columns"][number]): number | string {
+    if (col.dimensionIndex !== undefined) return row.dimensionValues[col.dimensionIndex] ?? "";
+    if (col.metricIndex !== undefined) return Number(row.metricValues[col.metricIndex] ?? 0);
+    return "";
+  }
+
+  const sortCol = columns.find((c) => c.key === sortKey);
+  const sorted = sortCol
+    ? [...rows].sort((a, b) => {
+        const av = valueFor(a, sortCol);
+        const bv = valueFor(b, sortCol);
+        const mul = sortDir === "asc" ? 1 : -1;
+        if (typeof av === "string" && typeof bv === "string") return av.localeCompare(bv) * mul;
+        return (Number(av) - Number(bv)) * mul;
+      })
+    : rows;
+
+  function renderCell(row: Ga4Row, col: SortableTableProps["columns"][number]) {
+    const v = valueFor(row, col);
+    switch (col.type) {
+      case "string":
+        return <span className="truncate" title={String(v)}>{String(v)}</span>;
+      case "int":
+        return fmtInt(Number(v));
+      case "pct":
+        return fmtPct(Number(v));
+      case "duration":
+        return fmtDuration(Number(v));
+      case "decimal":
+        return Number(v).toFixed(2);
+      case "key-badge":
+        return v === "true" ? (
+          <span className="inline-block text-[10px] font-semibold px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-700">KEY</span>
+        ) : (
+          <span className="text-gray-400">—</span>
+        );
+    }
+  }
+
+  return (
+    <section className="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
+      <div className="px-5 pt-4 pb-2">
+        <h3 className="text-xl font-bold text-gray-900">{title}</h3>
+        <p className="text-sm text-gray-500">{description} <span className="text-gray-400">· Click any column header to sort.</span></p>
+      </div>
+      <div className="max-h-[420px] overflow-y-auto">
+        <table className="min-w-full text-sm">
+          <thead className="bg-black text-white text-xs sticky top-0 z-10">
+            <tr>
+              {columns.map((col) => {
+                const active = col.key === sortKey;
+                const align = col.align ?? (col.type === "string" || col.type === "key-badge" ? "left" : "right");
+                return (
+                  <th
+                    key={col.key}
+                    onClick={() => clickHeader(col.key)}
+                    className={`px-3 py-2 ${align === "right" ? "text-right" : align === "center" ? "text-center" : "text-left"} font-semibold cursor-pointer select-none whitespace-nowrap ${active ? "text-white" : "text-gray-300 hover:text-white"}`}
+                  >
+                    {col.label}
+                    <span className="ml-1 inline-block w-3">{active ? (sortDir === "asc" ? "▲" : "▼") : ""}</span>
+                  </th>
+                );
+              })}
+            </tr>
+          </thead>
+          <tbody>
+            {sorted.length === 0 && (
+              <tr><td colSpan={columns.length} className="px-3 py-6 text-center text-gray-400">No data</td></tr>
+            )}
+            {sorted.map((r, i) => (
+              <tr key={i} className={i % 2 === 0 ? "bg-white" : "bg-gray-50"}>
+                {columns.map((col) => {
+                  const align = col.align ?? (col.type === "string" || col.type === "key-badge" ? "left" : "right");
+                  return (
+                    <td
+                      key={col.key}
+                      className={`px-3 py-1.5 ${align === "right" ? "text-right tabular-nums" : align === "center" ? "text-center" : "text-gray-900"} ${col.type === "string" ? "max-w-[460px] truncate" : ""}`}
+                    >
+                      {renderCell(r, col)}
+                    </td>
+                  );
+                })}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  );
+}
+
 export function Ga4Tables({
   trafficSources,
   events,
@@ -25,121 +147,48 @@ export function Ga4Tables({
 }) {
   return (
     <section className="max-w-[1400px] mx-auto px-6 mt-8 space-y-6">
-      <div className="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
-        <div className="px-5 pt-4 pb-2">
-          <h3 className="text-xl font-bold text-gray-900">Traffic Sources</h3>
-          <p className="text-sm text-gray-500">By channel and source/medium — acquisition, behavior, conversions.</p>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="min-w-full text-sm">
-            <thead className="bg-black text-white text-xs">
-              <tr>
-                <th className="px-3 py-2 text-left font-semibold">Channel</th>
-                <th className="px-3 py-2 text-left font-semibold">Source / Medium</th>
-                <th className="px-3 py-2 text-right font-semibold">Sessions</th>
-                <th className="px-3 py-2 text-right font-semibold">Users</th>
-                <th className="px-3 py-2 text-right font-semibold">Bounce Rate</th>
-                <th className="px-3 py-2 text-right font-semibold">Avg. Session</th>
-                <th className="px-3 py-2 text-right font-semibold">Pages / Session</th>
-                <th className="px-3 py-2 text-right font-semibold">Key Events</th>
-              </tr>
-            </thead>
-            <tbody>
-              {trafficSources.length === 0 && (
-                <tr><td colSpan={8} className="px-3 py-6 text-center text-gray-400">No data</td></tr>
-              )}
-              {trafficSources.map((r, i) => (
-                <tr key={i} className={i % 2 === 0 ? "bg-white" : "bg-gray-50"}>
-                  <td className="px-3 py-1.5 font-medium">{r.dimensionValues[0]}</td>
-                  <td className="px-3 py-1.5 text-gray-700">{r.dimensionValues[1]}</td>
-                  <td className="px-3 py-1.5 text-right tabular-nums">{fmtInt(Number(r.metricValues[0]))}</td>
-                  <td className="px-3 py-1.5 text-right tabular-nums">{fmtInt(Number(r.metricValues[1]))}</td>
-                  <td className="px-3 py-1.5 text-right tabular-nums">{fmtPct(Number(r.metricValues[2]))}</td>
-                  <td className="px-3 py-1.5 text-right tabular-nums">{fmtDuration(Number(r.metricValues[3]))}</td>
-                  <td className="px-3 py-1.5 text-right tabular-nums">{Number(r.metricValues[4]).toFixed(2)}</td>
-                  <td className="px-3 py-1.5 text-right tabular-nums">{fmtInt(Number(r.metricValues[5]))}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
+      <SortableTable
+        title="Traffic Sources"
+        description="By channel and source/medium — acquisition, behavior, conversions."
+        rows={trafficSources}
+        columns={[
+          { key: "channel", label: "Channel", type: "string", dimensionIndex: 0 },
+          { key: "source", label: "Source / Medium", type: "string", dimensionIndex: 1 },
+          { key: "sessions", label: "Sessions", type: "int", metricIndex: 0 },
+          { key: "users", label: "Users", type: "int", metricIndex: 1 },
+          { key: "bounceRate", label: "Bounce Rate", type: "pct", metricIndex: 2 },
+          { key: "avgSession", label: "Avg. Session", type: "duration", metricIndex: 3 },
+          { key: "pps", label: "Pages / Session", type: "decimal", metricIndex: 4 },
+          { key: "keyEvents", label: "Key Events", type: "int", metricIndex: 5 },
+        ]}
+      />
 
-      <div className="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
-        <div className="px-5 pt-4 pb-2">
-          <h3 className="text-xl font-bold text-gray-900">Events</h3>
-          <p className="text-sm text-gray-500">All event activity, ranked by count.</p>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="min-w-full text-sm">
-            <thead className="bg-black text-white text-xs">
-              <tr>
-                <th className="px-3 py-2 text-left font-semibold">Event Name</th>
-                <th className="px-3 py-2 text-center font-semibold">Key Event?</th>
-                <th className="px-3 py-2 text-right font-semibold">Count</th>
-                <th className="px-3 py-2 text-right font-semibold">Users</th>
-                <th className="px-3 py-2 text-right font-semibold">Per User</th>
-              </tr>
-            </thead>
-            <tbody>
-              {events.length === 0 && (
-                <tr><td colSpan={5} className="px-3 py-6 text-center text-gray-400">No data</td></tr>
-              )}
-              {events.map((r, i) => (
-                <tr key={i} className={i % 2 === 0 ? "bg-white" : "bg-gray-50"}>
-                  <td className="px-3 py-1.5 font-medium">{r.dimensionValues[0]}</td>
-                  <td className="px-3 py-1.5 text-center">
-                    {r.dimensionValues[1] === "true" ? (
-                      <span className="inline-block text-[10px] font-semibold px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-700">KEY</span>
-                    ) : (
-                      <span className="text-gray-400">—</span>
-                    )}
-                  </td>
-                  <td className="px-3 py-1.5 text-right tabular-nums">{fmtInt(Number(r.metricValues[0]))}</td>
-                  <td className="px-3 py-1.5 text-right tabular-nums">{fmtInt(Number(r.metricValues[1]))}</td>
-                  <td className="px-3 py-1.5 text-right tabular-nums">{Number(r.metricValues[2]).toFixed(2)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
+      <SortableTable
+        title="Events"
+        description="All event activity, ranked by count."
+        rows={events}
+        columns={[
+          { key: "eventName", label: "Event Name", type: "string", dimensionIndex: 0 },
+          { key: "isKeyEvent", label: "Key Event?", type: "key-badge", dimensionIndex: 1, align: "center" },
+          { key: "count", label: "Count", type: "int", metricIndex: 0 },
+          { key: "users", label: "Users", type: "int", metricIndex: 1 },
+          { key: "perUser", label: "Per User", type: "decimal", metricIndex: 2 },
+        ]}
+      />
 
-      <div className="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
-        <div className="px-5 pt-4 pb-2">
-          <h3 className="text-xl font-bold text-gray-900">Page Performance</h3>
-          <p className="text-sm text-gray-500">Per-page views, sessions, events and key events.</p>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="min-w-full text-sm">
-            <thead className="bg-black text-white text-xs">
-              <tr>
-                <th className="px-3 py-2 text-left font-semibold">Page Path</th>
-                <th className="px-3 py-2 text-right font-semibold">Views</th>
-                <th className="px-3 py-2 text-right font-semibold">Users</th>
-                <th className="px-3 py-2 text-right font-semibold">Sessions</th>
-                <th className="px-3 py-2 text-right font-semibold">Events</th>
-                <th className="px-3 py-2 text-right font-semibold">Key Events</th>
-              </tr>
-            </thead>
-            <tbody>
-              {pagePerformance.length === 0 && (
-                <tr><td colSpan={6} className="px-3 py-6 text-center text-gray-400">No data</td></tr>
-              )}
-              {pagePerformance.map((r, i) => (
-                <tr key={i} className={i % 2 === 0 ? "bg-white" : "bg-gray-50"}>
-                  <td className="px-3 py-1.5 text-gray-900 max-w-[460px] truncate">{r.dimensionValues[0]}</td>
-                  <td className="px-3 py-1.5 text-right tabular-nums">{fmtInt(Number(r.metricValues[0]))}</td>
-                  <td className="px-3 py-1.5 text-right tabular-nums">{fmtInt(Number(r.metricValues[1]))}</td>
-                  <td className="px-3 py-1.5 text-right tabular-nums">{fmtInt(Number(r.metricValues[2]))}</td>
-                  <td className="px-3 py-1.5 text-right tabular-nums">{fmtInt(Number(r.metricValues[3]))}</td>
-                  <td className="px-3 py-1.5 text-right tabular-nums">{fmtInt(Number(r.metricValues[4]))}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
+      <SortableTable
+        title="Page Performance"
+        description="Per-page views, sessions, events and key events."
+        rows={pagePerformance}
+        columns={[
+          { key: "page", label: "Page Path", type: "string", dimensionIndex: 0 },
+          { key: "views", label: "Views", type: "int", metricIndex: 0 },
+          { key: "users", label: "Users", type: "int", metricIndex: 1 },
+          { key: "sessions", label: "Sessions", type: "int", metricIndex: 2 },
+          { key: "events", label: "Events", type: "int", metricIndex: 3 },
+          { key: "keyEvents", label: "Key Events", type: "int", metricIndex: 4 },
+        ]}
+      />
     </section>
   );
 }

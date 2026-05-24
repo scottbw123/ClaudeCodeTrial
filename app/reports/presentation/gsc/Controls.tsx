@@ -3,6 +3,7 @@
 import { useRouter, useSearchParams } from "next/navigation";
 import { useTransition } from "react";
 import type { GscSite } from "@/lib/gsc";
+import { Combobox } from "../components/Combobox";
 
 const PRESET_DAYS = [
   { label: "Last 30d", value: 30 },
@@ -17,8 +18,8 @@ export function GscControls({
   currentDays,
   currentStart,
   currentEnd,
-  currentQuery,
-  currentPage,
+  currentQueries,
+  currentPages,
   queryOptions,
   pageOptions,
 }: {
@@ -27,8 +28,8 @@ export function GscControls({
   currentDays: number;
   currentStart: string;
   currentEnd: string;
-  currentQuery: string;
-  currentPage: string;
+  currentQueries: string[];
+  currentPages: string[];
   queryOptions: string[];
   pageOptions: string[];
 }) {
@@ -50,25 +51,30 @@ export function GscControls({
   return (
     <section className="max-w-[1400px] mx-auto px-6 pt-6">
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3">
-        <Select
+        <Combobox
           label="Site"
-          value={currentSite}
-          onChange={(v) =>
-            update({ site: v, filterQuery: null, filterPage: null })
+          values={currentSite ? [currentSite] : []}
+          options={sites.map((s) => s.siteUrl)}
+          onChange={(vs) =>
+            update({ site: vs[0] ?? null, filterQuery: null, filterPage: null })
           }
-          options={sites.map((s) => ({ value: s.siteUrl, label: s.siteUrl }))}
+          placeholder="Select a site…"
         />
-        <Select
-          label="Landing Page"
-          value={currentPage}
-          onChange={(v) => update({ filterPage: v })}
-          options={[{ value: "", label: "All pages" }, ...pageOptions.map((p) => ({ value: p, label: p }))]}
+        <Combobox
+          label="Landing Page (multi-select)"
+          values={currentPages}
+          options={pageOptions}
+          multi
+          onChange={(vs) => update({ filterPage: vs.length ? vs.join(",") : null })}
+          placeholder="All pages"
         />
-        <Select
-          label="Query"
-          value={currentQuery}
-          onChange={(v) => update({ filterQuery: v })}
-          options={[{ value: "", label: "All queries" }, ...queryOptions.map((q) => ({ value: q, label: q }))]}
+        <Combobox
+          label="Query (multi-select)"
+          values={currentQueries}
+          options={queryOptions}
+          multi
+          onChange={(vs) => update({ filterQuery: vs.length ? vs.join(",") : null })}
+          placeholder="All queries"
         />
       </div>
 
@@ -116,34 +122,5 @@ export function GscControls({
         {pending && <span className="text-xs text-gray-400">Refreshing…</span>}
       </div>
     </section>
-  );
-}
-
-function Select({
-  label,
-  value,
-  onChange,
-  options,
-}: {
-  label: string;
-  value: string;
-  onChange: (v: string) => void;
-  options: { value: string; label: string }[];
-}) {
-  return (
-    <label className="flex flex-col">
-      <span className="text-[10px] uppercase tracking-wide text-gray-500 mb-1">{label}</span>
-      <select
-        className="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-      >
-        {options.map((o) => (
-          <option key={o.value} value={o.value}>
-            {o.label.length > 80 ? o.label.slice(0, 77) + "…" : o.label}
-          </option>
-        ))}
-      </select>
-    </label>
   );
 }

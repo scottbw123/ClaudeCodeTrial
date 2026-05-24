@@ -1,3 +1,7 @@
+"use client";
+
+import { useState } from "react";
+
 export interface DeltaRow {
   key: string;
   clicks: { current: number; changePercent: number };
@@ -6,18 +10,29 @@ export interface DeltaRow {
   position: { current: number; changePercent: number };
 }
 
-function formatInt(n: number): string {
+type SortKey =
+  | "key"
+  | "impressions"
+  | "impressionsChange"
+  | "clicks"
+  | "clicksChange"
+  | "position"
+  | "positionChange"
+  | "ctr"
+  | "ctrChange";
+
+type SortDir = "asc" | "desc";
+
+function fmtInt(n: number): string {
   return new Intl.NumberFormat("en-US").format(Math.round(n));
 }
 
-function formatPct(n: number): string {
+function fmtPct(n: number): string {
   return `${(n * 100).toFixed(2)}%`;
 }
 
 function Delta({ change, invert }: { change: number; invert?: boolean }) {
-  if (!isFinite(change) || change === 0) {
-    return <span className="text-xs text-gray-400">—</span>;
-  }
+  if (!isFinite(change) || change === 0) return <span className="text-xs text-gray-400">—</span>;
   const positive = invert ? change < 0 : change > 0;
   const color = positive ? "text-emerald-600" : "text-rose-600";
   const arrow = change > 0 ? "▲" : "▼";
@@ -25,6 +40,33 @@ function Delta({ change, invert }: { change: number; invert?: boolean }) {
     <span className={`text-xs font-medium ${color} tabular-nums`}>
       {arrow} {Math.abs(change * 100).toFixed(1)}%
     </span>
+  );
+}
+
+function HeaderCell({
+  col,
+  label,
+  right,
+  sortKey,
+  sortDir,
+  onClick,
+}: {
+  col: SortKey;
+  label: string;
+  right?: boolean;
+  sortKey: SortKey;
+  sortDir: SortDir;
+  onClick: (col: SortKey) => void;
+}) {
+  const active = sortKey === col;
+  return (
+    <th
+      onClick={() => onClick(col)}
+      className={`px-4 py-2 ${right ? "text-right" : "text-left"} font-semibold cursor-pointer select-none whitespace-nowrap ${active ? "text-white" : "text-gray-300 hover:text-white"}`}
+    >
+      {label}
+      <span className="ml-1 inline-block w-3">{active ? (sortDir === "asc" ? "▲" : "▼") : ""}</span>
+    </th>
   );
 }
 
@@ -41,58 +83,99 @@ export function DeltaTable({
   rows: DeltaRow[];
   totals: { clicks: number; impressions: number; ctr: number; position: number; clicksChange: number; impressionsChange: number; ctrChange: number; positionChange: number };
 }) {
+  const [sortKey, setSortKey] = useState<SortKey>("impressions");
+  const [sortDir, setSortDir] = useState<SortDir>("desc");
+
+  function clickHeader(col: SortKey) {
+    if (sortKey === col) {
+      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    } else {
+      setSortKey(col);
+      setSortDir("desc");
+    }
+  }
+
+  function valueFor(row: DeltaRow, key: SortKey): number | string {
+    switch (key) {
+      case "key": return row.key;
+      case "impressions": return row.impressions.current;
+      case "impressionsChange": return row.impressions.changePercent;
+      case "clicks": return row.clicks.current;
+      case "clicksChange": return row.clicks.changePercent;
+      case "position": return row.position.current;
+      case "positionChange": return row.position.changePercent;
+      case "ctr": return row.ctr.current;
+      case "ctrChange": return row.ctr.changePercent;
+    }
+  }
+
+  const sorted = [...rows].sort((a, b) => {
+    const av = valueFor(a, sortKey);
+    const bv = valueFor(b, sortKey);
+    const mul = sortDir === "asc" ? 1 : -1;
+    if (typeof av === "string" && typeof bv === "string") return av.localeCompare(bv) * mul;
+    return (Number(av) - Number(bv)) * mul;
+  });
+
   return (
     <section className="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
       <div className="px-5 pt-4 pb-2">
         <h3 className="text-xl font-bold text-gray-900">{title}</h3>
-        <p className="text-sm text-gray-500">{description}</p>
+        <p className="text-sm text-gray-500">{description} <span className="text-gray-400">· Click any column header to sort.</span></p>
       </div>
-      <div className="overflow-x-auto">
+      <div className="max-h-[420px] overflow-y-auto">
         <table className="min-w-full text-sm">
-          <thead className="bg-black text-white text-xs">
+          <thead className="bg-black text-white text-xs sticky top-0 z-10">
             <tr>
               <th className="px-4 py-2 text-left font-semibold">#</th>
-              <th className="px-4 py-2 text-left font-semibold">{keyLabel}</th>
-              <th className="px-4 py-2 text-right font-semibold">Impressions</th>
-              <th className="px-4 py-2 text-right font-semibold">% Δ</th>
-              <th className="px-4 py-2 text-right font-semibold">Clicks</th>
-              <th className="px-4 py-2 text-right font-semibold">% Δ</th>
-              <th className="px-4 py-2 text-right font-semibold">Avg. Position</th>
-              <th className="px-4 py-2 text-right font-semibold">% Δ</th>
-              <th className="px-4 py-2 text-right font-semibold">CTR</th>
-              <th className="px-4 py-2 text-right font-semibold">% Δ</th>
+              <HeaderCell col="key" label={keyLabel} sortKey={sortKey} sortDir={sortDir} onClick={clickHeader} />
+              <HeaderCell col="impressions" label="Impressions" right sortKey={sortKey} sortDir={sortDir} onClick={clickHeader} />
+              <HeaderCell col="impressionsChange" label="% Δ" right sortKey={sortKey} sortDir={sortDir} onClick={clickHeader} />
+              <HeaderCell col="clicks" label="Clicks" right sortKey={sortKey} sortDir={sortDir} onClick={clickHeader} />
+              <HeaderCell col="clicksChange" label="% Δ" right sortKey={sortKey} sortDir={sortDir} onClick={clickHeader} />
+              <HeaderCell col="position" label="Avg. Position" right sortKey={sortKey} sortDir={sortDir} onClick={clickHeader} />
+              <HeaderCell col="positionChange" label="% Δ" right sortKey={sortKey} sortDir={sortDir} onClick={clickHeader} />
+              <HeaderCell col="ctr" label="CTR" right sortKey={sortKey} sortDir={sortDir} onClick={clickHeader} />
+              <HeaderCell col="ctrChange" label="% Δ" right sortKey={sortKey} sortDir={sortDir} onClick={clickHeader} />
             </tr>
           </thead>
           <tbody>
-            {rows.map((r, i) => (
+            {sorted.map((r, i) => (
               <tr key={r.key} className={i % 2 === 0 ? "bg-white" : "bg-gray-50"}>
                 <td className="px-4 py-1.5 text-gray-500">{i + 1}.</td>
-                <td className="px-4 py-1.5 text-gray-900 max-w-[420px] truncate">{r.key}</td>
-                <td className="px-4 py-1.5 text-right tabular-nums">{formatInt(r.impressions.current)}</td>
+                <td className="px-4 py-1.5 text-gray-900 max-w-[420px] truncate" title={r.key}>{r.key}</td>
+                <td className="px-4 py-1.5 text-right tabular-nums">{fmtInt(r.impressions.current)}</td>
                 <td className="px-4 py-1.5 text-right"><Delta change={r.impressions.changePercent} /></td>
-                <td className="px-4 py-1.5 text-right tabular-nums">{formatInt(r.clicks.current)}</td>
+                <td className="px-4 py-1.5 text-right tabular-nums">{fmtInt(r.clicks.current)}</td>
                 <td className="px-4 py-1.5 text-right"><Delta change={r.clicks.changePercent} /></td>
                 <td className="px-4 py-1.5 text-right tabular-nums">{r.position.current.toFixed(2)}</td>
                 <td className="px-4 py-1.5 text-right"><Delta change={r.position.changePercent} invert /></td>
-                <td className="px-4 py-1.5 text-right tabular-nums">{formatPct(r.ctr.current)}</td>
+                <td className="px-4 py-1.5 text-right tabular-nums">{fmtPct(r.ctr.current)}</td>
                 <td className="px-4 py-1.5 text-right"><Delta change={r.ctr.changePercent} /></td>
               </tr>
             ))}
-            <tr className="border-t-2 border-gray-300 font-semibold bg-white">
-              <td className="px-4 py-2"></td>
-              <td className="px-4 py-2">Grand total</td>
-              <td className="px-4 py-2 text-right tabular-nums">{formatInt(totals.impressions)}</td>
-              <td className="px-4 py-2 text-right"><Delta change={totals.impressionsChange} /></td>
-              <td className="px-4 py-2 text-right tabular-nums">{formatInt(totals.clicks)}</td>
-              <td className="px-4 py-2 text-right"><Delta change={totals.clicksChange} /></td>
-              <td className="px-4 py-2 text-right tabular-nums">{totals.position.toFixed(2)}</td>
-              <td className="px-4 py-2 text-right"><Delta change={totals.positionChange} invert /></td>
-              <td className="px-4 py-2 text-right tabular-nums">{formatPct(totals.ctr)}</td>
-              <td className="px-4 py-2 text-right"><Delta change={totals.ctrChange} /></td>
-            </tr>
+            {sorted.length === 0 && (
+              <tr><td colSpan={10} className="px-4 py-6 text-center text-gray-400">No data</td></tr>
+            )}
           </tbody>
         </table>
       </div>
+      <table className="min-w-full text-sm border-t-2 border-gray-300">
+        <tbody>
+          <tr className="font-semibold bg-white">
+            <td className="px-4 py-2 w-[60px]"></td>
+            <td className="px-4 py-2">Grand total</td>
+            <td className="px-4 py-2 text-right tabular-nums">{fmtInt(totals.impressions)}</td>
+            <td className="px-4 py-2 text-right"><Delta change={totals.impressionsChange} /></td>
+            <td className="px-4 py-2 text-right tabular-nums">{fmtInt(totals.clicks)}</td>
+            <td className="px-4 py-2 text-right"><Delta change={totals.clicksChange} /></td>
+            <td className="px-4 py-2 text-right tabular-nums">{totals.position.toFixed(2)}</td>
+            <td className="px-4 py-2 text-right"><Delta change={totals.positionChange} invert /></td>
+            <td className="px-4 py-2 text-right tabular-nums">{fmtPct(totals.ctr)}</td>
+            <td className="px-4 py-2 text-right"><Delta change={totals.ctrChange} /></td>
+          </tr>
+        </tbody>
+      </table>
     </section>
   );
 }

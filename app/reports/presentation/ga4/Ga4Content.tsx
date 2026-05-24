@@ -103,10 +103,26 @@ export async function Ga4Content({ searchParams: sp, gscHref, ga4Href }: Props) 
   const computedDays = daysBetween(range.startDate, range.endDate);
   const compareRange = previousPeriod(range.startDate, range.endDate);
 
+  const channels = (sp.channel || "").split(",").map((s) => s.trim()).filter(Boolean);
+  const pageUrls = (sp.pageUrl || "").split(",").map((s) => s.trim()).filter(Boolean);
+  const eventNames = (sp.eventName || "").split(",").map((s) => s.trim()).filter(Boolean);
+
   const filters: Ga4Filter[] = [];
-  if (sp.channel) filters.push({ fieldName: "sessionDefaultChannelGroup", value: sp.channel });
-  if (sp.pageUrl) filters.push({ fieldName: "pagePath", matchType: "CONTAINS", value: sp.pageUrl });
-  if (sp.eventName) filters.push({ fieldName: "eventName", value: sp.eventName });
+  if (channels.length === 1) {
+    filters.push({ fieldName: "sessionDefaultChannelGroup", value: channels[0] });
+  } else if (channels.length > 1) {
+    filters.push({ fieldName: "sessionDefaultChannelGroup", values: channels });
+  }
+  if (pageUrls.length === 1) {
+    filters.push({ fieldName: "pagePath", matchType: "CONTAINS", value: pageUrls[0] });
+  } else if (pageUrls.length > 1) {
+    filters.push({ fieldName: "pagePath", values: pageUrls });
+  }
+  if (eventNames.length === 1) {
+    filters.push({ fieldName: "eventName", value: eventNames[0] });
+  } else if (eventNames.length > 1) {
+    filters.push({ fieldName: "eventName", values: eventNames });
+  }
 
   const eventFiltersForEvents: Ga4Filter[] = [...filters];
   if (sp.keyEvent === "true") eventFiltersForEvents.push({ fieldName: "isKeyEvent", value: "true" });
@@ -186,7 +202,7 @@ export async function Ga4Content({ searchParams: sp, gscHref, ga4Href }: Props) 
           endDate: range.endDate,
           dimensions: ["sessionDefaultChannelGroup"],
           metrics: ["sessions"],
-          limit: 25,
+          limit: 100,
           orderByMetric: { name: "sessions" },
         }).then((r) => r.rows.map((row) => row.dimensionValues[0]).filter(Boolean)),
         runReport({
@@ -195,7 +211,7 @@ export async function Ga4Content({ searchParams: sp, gscHref, ga4Href }: Props) 
           endDate: range.endDate,
           dimensions: ["pagePath"],
           metrics: ["screenPageViews"],
-          limit: 50,
+          limit: 50000,
           orderByMetric: { name: "screenPageViews" },
         }).then((r) => r.rows.map((row) => row.dimensionValues[0]).filter(Boolean)),
         runReport({
@@ -204,7 +220,7 @@ export async function Ga4Content({ searchParams: sp, gscHref, ga4Href }: Props) 
           endDate: range.endDate,
           dimensions: ["eventName"],
           metrics: ["eventCount"],
-          limit: 50,
+          limit: 1000,
           orderByMetric: { name: "eventCount" },
         }).then((r) => r.rows.map((row) => row.dimensionValues[0]).filter(Boolean)),
         fetchTotals(propertyId, range30.startDate, range30.endDate, filters),
@@ -347,10 +363,10 @@ export async function Ga4Content({ searchParams: sp, gscHref, ga4Href }: Props) 
         currentDays={computedDays}
         currentStart={range.startDate}
         currentEnd={range.endDate}
-        currentChannel={sp.channel || ""}
-        currentPageUrl={sp.pageUrl || ""}
+        currentChannels={channels}
+        currentPageUrls={pageUrls}
         currentKeyEvent={sp.keyEvent || ""}
-        currentEventName={sp.eventName || ""}
+        currentEventNames={eventNames}
         channelOptions={channelOptions}
         pageOptions={pageOptions}
         eventOptions={eventOptions}

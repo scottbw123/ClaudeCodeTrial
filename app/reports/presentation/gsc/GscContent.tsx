@@ -1,4 +1,4 @@
-import { queryGsc, listSites, type GscFilter, type GscRow } from "@/lib/gsc";
+import { queryGsc, queryGscPaginated, listSites, escapeRegex, type GscFilter, type GscRow } from "@/lib/gsc";
 import { previousPeriod, rangeFromDays, daysBetween } from "@/lib/date-utils";
 import { PresentationHeader } from "../components/Header";
 import { PresentationFooter } from "../components/Footer";
@@ -85,8 +85,8 @@ export async function GscContent({ searchParams: sp, gscHref, ga4Href }: Props) 
   const sites = await listSites();
 
   const siteUrl = sp.site || sites[0]?.siteUrl || "";
-  const filterQuery = sp.filterQuery || "";
-  const filterPage = sp.filterPage || "";
+  const filterQueries = (sp.filterQuery || "").split(",").map((s) => s.trim()).filter(Boolean);
+  const filterPages = (sp.filterPage || "").split(",").map((s) => s.trim()).filter(Boolean);
 
   const hasCustom = Boolean(sp.start && sp.end);
   const days = Number(sp.days || 30);
@@ -95,8 +95,18 @@ export async function GscContent({ searchParams: sp, gscHref, ga4Href }: Props) 
   const compareRange = previousPeriod(range.startDate, range.endDate);
 
   const filters: GscFilter[] = [];
-  if (filterQuery) filters.push({ dimension: "query", operator: "equals", expression: filterQuery });
-  if (filterPage) filters.push({ dimension: "page", operator: "equals", expression: filterPage });
+  if (filterQueries.length === 1) {
+    filters.push({ dimension: "query", operator: "equals", expression: filterQueries[0] });
+  } else if (filterQueries.length > 1) {
+    const regex = filterQueries.map(escapeRegex).join("|");
+    filters.push({ dimension: "query", operator: "includingRegex", expression: regex });
+  }
+  if (filterPages.length === 1) {
+    filters.push({ dimension: "page", operator: "equals", expression: filterPages[0] });
+  } else if (filterPages.length > 1) {
+    const regex = filterPages.map(escapeRegex).join("|");
+    filters.push({ dimension: "page", operator: "includingRegex", expression: regex });
+  }
 
   const range30 = rangeFromDays(30);
   const range90 = rangeFromDays(90);
@@ -112,6 +122,8 @@ export async function GscContent({ searchParams: sp, gscHref, ga4Href }: Props) 
   let prevQueries: GscRow[] = [];
   let topPages: GscRow[] = [];
   let prevPages: GscRow[] = [];
+  let queryOptionsRows: GscRow[] = [];
+  let pageOptionsRows: GscRow[] = [];
   let currentDevices: GscRow[] = [];
   let previousDevices: GscRow[] = [];
   let currentCountries: GscRow[] = [];
@@ -126,6 +138,8 @@ export async function GscContent({ searchParams: sp, gscHref, ga4Href }: Props) 
         prevQueries,
         topPages,
         prevPages,
+        queryOptionsRows,
+        pageOptionsRows,
         currentDevices,
         previousDevices,
         currentCountries,
@@ -133,10 +147,12 @@ export async function GscContent({ searchParams: sp, gscHref, ga4Href }: Props) 
       ] = await Promise.all([
         fetchPeriod(siteUrl, range.startDate, range.endDate, filters),
         fetchPeriod(siteUrl, compareRange.startDate, compareRange.endDate, filters),
-        queryGsc({ siteUrl, ...range, dimensions: ["query"], rowLimit: 50, filters }),
+        queryGsc({ siteUrl, ...range, dimensions: ["query"], rowLimit: 500, filters }),
         queryGsc({ siteUrl, ...compareRange, dimensions: ["query"], rowLimit: 500, filters }),
-        queryGsc({ siteUrl, ...range, dimensions: ["page"], rowLimit: 50, filters }),
+        queryGsc({ siteUrl, ...range, dimensions: ["page"], rowLimit: 500, filters }),
         queryGsc({ siteUrl, ...compareRange, dimensions: ["page"], rowLimit: 500, filters }),
+        queryGscPaginated({ siteUrl, ...range, dimensions: ["query"] }, 50000),
+        queryGscPaginated({ siteUrl, ...range, dimensions: ["page"] }, 50000),
         queryGsc({ siteUrl, ...range, dimensions: ["device"], rowLimit: 10, filters }),
         queryGsc({ siteUrl, ...compareRange, dimensions: ["device"], rowLimit: 10, filters }),
         queryGsc({ siteUrl, ...range, dimensions: ["country"], rowLimit: 250, filters }),
@@ -289,10 +305,10 @@ export async function GscContent({ searchParams: sp, gscHref, ga4Href }: Props) 
         currentDays={computedDays}
         currentStart={range.startDate}
         currentEnd={range.endDate}
-        currentQuery={filterQuery}
-        currentPage={filterPage}
-        queryOptions={topQueries.map((r) => r.keys[0] ?? "").filter(Boolean)}
-        pageOptions={topPages.map((r) => r.keys[0] ?? "").filter(Boolean)}
+        currentQueries={filterQueries}
+        currentPages={filterPages}
+        queryOptions={queryOptionsRows.map((r) => r.keys[0] ?? "").filter(Boolean)}
+        pageOptions={pageOptionsRows.map((r) => r.keys[0] ?? "").filter(Boolean)}
       />
 
       {fetchError && (

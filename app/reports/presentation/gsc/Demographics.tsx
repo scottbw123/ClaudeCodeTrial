@@ -123,14 +123,16 @@ export function DemographicsSection({
               </tbody>
             </table>
           </div>
-          <div className="h-56">
+          <div className="h-80">
             <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
+              <PieChart margin={{ top: 8, right: 8, bottom: 8, left: 8 }}>
                 <Pie
                   data={devices.map((d) => ({ name: d.device, value: d.impressions, pct: d.impressions / deviceImpressions }))}
                   dataKey="value"
-                  innerRadius={48}
-                  outerRadius={88}
+                  cx="40%"
+                  cy="50%"
+                  innerRadius={60}
+                  outerRadius={100}
                   label={(entry: unknown) => {
                     const pct = (entry as { pct?: number }).pct ?? 0;
                     return `${(pct * 100).toFixed(1)}%`;
@@ -142,7 +144,7 @@ export function DemographicsSection({
                   ))}
                 </Pie>
                 <Tooltip formatter={(v) => formatInt(Number(v))} />
-                <Legend />
+                <Legend layout="vertical" verticalAlign="middle" align="right" wrapperStyle={{ paddingLeft: 16 }} />
               </PieChart>
             </ResponsiveContainer>
           </div>
@@ -175,8 +177,14 @@ export function DemographicsSection({
               </tbody>
             </table>
           </div>
-          <div className="mt-4 h-72 bg-gray-50 rounded-md overflow-hidden">
-            <ComposableMap projectionConfig={{ scale: 130 }} height={300}>
+          <div className="mt-4 overflow-hidden">
+            <ComposableMap
+              projection="geoEqualEarth"
+              projectionConfig={{ scale: 150, center: [0, 10] }}
+              width={800}
+              height={400}
+              style={{ width: "100%", height: "auto" }}
+            >
               <Sphere id="sphere" stroke="#e5e7eb" strokeWidth={0.5} fill="transparent" />
               <Geographies geography={TOPOJSON_URL}>
                 {({ geographies }: { geographies: { rsmKey: string; id: string }[] }) =>

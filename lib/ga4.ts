@@ -21,7 +21,8 @@ export interface Ga4ReportResult {
 export interface Ga4Filter {
   fieldName: string;
   matchType?: "EXACT" | "CONTAINS" | "BEGINS_WITH";
-  value: string;
+  value?: string;
+  values?: string[];
 }
 
 export async function listProperties(): Promise<Ga4Property[]> {
@@ -41,25 +42,29 @@ export async function listProperties(): Promise<Ga4Property[]> {
   return out;
 }
 
-function buildDimensionFilter(filters: Ga4Filter[]) {
-  if (filters.length === 0) return undefined;
-  if (filters.length === 1) {
-    const f = filters[0];
+function singleFilterExpression(f: Ga4Filter) {
+  if (f.values && f.values.length > 0) {
     return {
       filter: {
         fieldName: f.fieldName,
-        stringFilter: { matchType: f.matchType ?? "EXACT", value: f.value },
+        inListFilter: { values: f.values },
       },
     };
   }
   return {
+    filter: {
+      fieldName: f.fieldName,
+      stringFilter: { matchType: f.matchType ?? "EXACT", value: f.value ?? "" },
+    },
+  };
+}
+
+function buildDimensionFilter(filters: Ga4Filter[]) {
+  if (filters.length === 0) return undefined;
+  if (filters.length === 1) return singleFilterExpression(filters[0]);
+  return {
     andGroup: {
-      expressions: filters.map((f) => ({
-        filter: {
-          fieldName: f.fieldName,
-          stringFilter: { matchType: f.matchType ?? "EXACT", value: f.value },
-        },
-      })),
+      expressions: filters.map(singleFilterExpression),
     },
   };
 }
