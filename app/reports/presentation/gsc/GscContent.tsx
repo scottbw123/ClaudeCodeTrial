@@ -1,4 +1,4 @@
-import { queryGsc, queryGscPaginated, queryGscFiltered, listSites, type GscRow, type FilterMode } from "@/lib/gsc";
+import { queryGsc, queryGscPaginated, queryGscFiltered, listSites, mergePageRowsByNormalizedUrl, type GscRow } from "@/lib/gsc";
 import { previousPeriod, rangeFromDays, daysBetween } from "@/lib/date-utils";
 import { PresentationHeader } from "../components/Header";
 import { PresentationFooter } from "../components/Footer";
@@ -39,8 +39,8 @@ function formatBig(n: number): string {
   return new Intl.NumberFormat("en-US").format(Math.round(n));
 }
 
-async function fetchPeriod(siteUrl: string, startDate: string, endDate: string, fq: string[], fqm: FilterMode, fp: string[], fpm: FilterMode): Promise<GscRow[]> {
-  return queryGscFiltered({ siteUrl, startDate, endDate, dimensions: ["date"], rowLimit: 1000, filterQueries: fq, filterQueriesMode: fqm, filterPages: fp, filterPagesMode: fpm });
+async function fetchPeriod(siteUrl: string, startDate: string, endDate: string, fq: string[], fqe: string[], fp: string[], fpe: string[]): Promise<GscRow[]> {
+  return queryGscFiltered({ siteUrl, startDate, endDate, dimensions: ["date"], rowLimit: 1000, filterQueries: fq, filterQueriesExclude: fqe, filterPages: fp, filterPagesExclude: fpe });
 }
 
 function buildCallouts(
@@ -87,10 +87,11 @@ export async function GscContent({ searchParams: sp, overviewHref, gscHref, ga4H
   const sites = await listSites();
 
   const siteUrl = sp.site || sites[0]?.siteUrl || "";
-  const filterQueries = (sp.filterQuery || "").split(",").map((s) => s.trim()).filter(Boolean);
-  const filterQueryMode: FilterMode = sp.filterQueryMode === "exclude" ? "exclude" : "include";
-  const filterPages = (sp.filterPage || "").split(",").map((s) => s.trim()).filter(Boolean);
-  const filterPageMode: FilterMode = sp.filterPageMode === "exclude" ? "exclude" : "include";
+  const splitCsv = (s: string | undefined) => (s || "").split(",").map((x) => x.trim()).filter(Boolean);
+  const filterQueries = splitCsv(sp.filterQuery);
+  const filterQueriesExclude = splitCsv(sp.filterQueryExclude);
+  const filterPages = splitCsv(sp.filterPage);
+  const filterPagesExclude = splitCsv(sp.filterPageExclude);
 
   const hasCustom = Boolean(sp.start && sp.end);
   const days = Number(sp.days || 30);
@@ -137,23 +138,23 @@ export async function GscContent({ searchParams: sp, overviewHref, gscHref, ga4H
         currentCountries,
         c30, p30, c90, p90, c180, p180,
       ] = await Promise.all([
-        fetchPeriod(siteUrl, range.startDate, range.endDate, filterQueries, filterQueryMode, filterPages, filterPageMode),
-        fetchPeriod(siteUrl, compareRange.startDate, compareRange.endDate, filterQueries, filterQueryMode, filterPages, filterPageMode),
-        queryGscFiltered({ siteUrl, ...range, dimensions: ["query"], rowLimit: 500, filterQueries, filterQueriesMode: filterQueryMode, filterPages, filterPagesMode: filterPageMode }),
-        queryGscFiltered({ siteUrl, ...compareRange, dimensions: ["query"], rowLimit: 500, filterQueries, filterQueriesMode: filterQueryMode, filterPages, filterPagesMode: filterPageMode }),
-        queryGscFiltered({ siteUrl, ...range, dimensions: ["page"], rowLimit: 500, filterQueries, filterQueriesMode: filterQueryMode, filterPages, filterPagesMode: filterPageMode }),
-        queryGscFiltered({ siteUrl, ...compareRange, dimensions: ["page"], rowLimit: 500, filterQueries, filterQueriesMode: filterQueryMode, filterPages, filterPagesMode: filterPageMode }),
+        fetchPeriod(siteUrl, range.startDate, range.endDate, filterQueries, filterQueriesExclude, filterPages, filterPagesExclude),
+        fetchPeriod(siteUrl, compareRange.startDate, compareRange.endDate, filterQueries, filterQueriesExclude, filterPages, filterPagesExclude),
+        queryGscFiltered({ siteUrl, ...range, dimensions: ["query"], rowLimit: 500, filterQueries, filterQueriesExclude, filterPages, filterPagesExclude }),
+        queryGscFiltered({ siteUrl, ...compareRange, dimensions: ["query"], rowLimit: 500, filterQueries, filterQueriesExclude, filterPages, filterPagesExclude }),
+        queryGscFiltered({ siteUrl, ...range, dimensions: ["page"], rowLimit: 500, filterQueries, filterQueriesExclude, filterPages, filterPagesExclude }),
+        queryGscFiltered({ siteUrl, ...compareRange, dimensions: ["page"], rowLimit: 500, filterQueries, filterQueriesExclude, filterPages, filterPagesExclude }),
         queryGscPaginated({ siteUrl, ...range, dimensions: ["query"] }, 50000),
         queryGscPaginated({ siteUrl, ...range, dimensions: ["page"] }, 50000),
-        queryGscFiltered({ siteUrl, ...range, dimensions: ["device"], rowLimit: 10, filterQueries, filterQueriesMode: filterQueryMode, filterPages, filterPagesMode: filterPageMode }),
-        queryGscFiltered({ siteUrl, ...compareRange, dimensions: ["device"], rowLimit: 10, filterQueries, filterQueriesMode: filterQueryMode, filterPages, filterPagesMode: filterPageMode }),
-        queryGscFiltered({ siteUrl, ...range, dimensions: ["country"], rowLimit: 250, filterQueries, filterQueriesMode: filterQueryMode, filterPages, filterPagesMode: filterPageMode }),
-        fetchPeriod(siteUrl, range30.startDate, range30.endDate, filterQueries, filterQueryMode, filterPages, filterPageMode),
-        fetchPeriod(siteUrl, prev30.startDate, prev30.endDate, filterQueries, filterQueryMode, filterPages, filterPageMode),
-        fetchPeriod(siteUrl, range90.startDate, range90.endDate, filterQueries, filterQueryMode, filterPages, filterPageMode),
-        fetchPeriod(siteUrl, prev90.startDate, prev90.endDate, filterQueries, filterQueryMode, filterPages, filterPageMode),
-        fetchPeriod(siteUrl, range180.startDate, range180.endDate, filterQueries, filterQueryMode, filterPages, filterPageMode),
-        fetchPeriod(siteUrl, prev180.startDate, prev180.endDate, filterQueries, filterQueryMode, filterPages, filterPageMode),
+        queryGscFiltered({ siteUrl, ...range, dimensions: ["device"], rowLimit: 10, filterQueries, filterQueriesExclude, filterPages, filterPagesExclude }),
+        queryGscFiltered({ siteUrl, ...compareRange, dimensions: ["device"], rowLimit: 10, filterQueries, filterQueriesExclude, filterPages, filterPagesExclude }),
+        queryGscFiltered({ siteUrl, ...range, dimensions: ["country"], rowLimit: 250, filterQueries, filterQueriesExclude, filterPages, filterPagesExclude }),
+        fetchPeriod(siteUrl, range30.startDate, range30.endDate, filterQueries, filterQueriesExclude, filterPages, filterPagesExclude),
+        fetchPeriod(siteUrl, prev30.startDate, prev30.endDate, filterQueries, filterQueriesExclude, filterPages, filterPagesExclude),
+        fetchPeriod(siteUrl, range90.startDate, range90.endDate, filterQueries, filterQueriesExclude, filterPages, filterPagesExclude),
+        fetchPeriod(siteUrl, prev90.startDate, prev90.endDate, filterQueries, filterQueriesExclude, filterPages, filterPagesExclude),
+        fetchPeriod(siteUrl, range180.startDate, range180.endDate, filterQueries, filterQueriesExclude, filterPages, filterPagesExclude),
+        fetchPeriod(siteUrl, prev180.startDate, prev180.endDate, filterQueries, filterQueriesExclude, filterPages, filterPagesExclude),
       ]);
     } catch (err) {
       fetchError = err instanceof Error ? err.message : String(err);
@@ -234,7 +235,7 @@ export async function GscContent({ searchParams: sp, overviewHref, gscHref, ga4H
   ];
 
   const queryRows = buildDeltaRows(topQueries, prevQueries);
-  const pageRows = buildDeltaRows(topPages, prevPages);
+  const pageRows = buildDeltaRows(mergePageRowsByNormalizedUrl(topPages), mergePageRowsByNormalizedUrl(prevPages));
 
   const tableTotals = {
     clicks: currentTotals.clicks,
@@ -257,9 +258,11 @@ export async function GscContent({ searchParams: sp, overviewHref, gscHref, ga4H
     return {
       device: d.keys[0] ?? "",
       impressions: d.impressions,
+      clicks: d.clicks,
       rank: d.position,
       ctr: d.ctr,
       impressionsChange: pct(d.impressions, p?.impressions ?? 0),
+      clicksChange: pct(d.clicks, p?.clicks ?? 0),
       rankChange: pct(d.position, p?.position ?? 0),
       ctrChange: pct(d.ctr, p?.ctr ?? 0),
     };
@@ -300,11 +303,17 @@ export async function GscContent({ searchParams: sp, overviewHref, gscHref, ga4H
         currentStart={range.startDate}
         currentEnd={range.endDate}
         currentQueries={filterQueries}
-        currentQueriesMode={filterQueryMode}
+        currentQueriesExclude={filterQueriesExclude}
         currentPages={filterPages}
-        currentPagesMode={filterPageMode}
+        currentPagesExclude={filterPagesExclude}
         queryOptions={queryOptionsRows.map((r) => r.keys[0] ?? "").filter(Boolean)}
-        pageOptions={pageOptionsRows.map((r) => r.keys[0] ?? "").filter(Boolean)}
+        pageOptions={Array.from(new Set(pageOptionsRows.map((r) => r.keys[0] ?? "").filter(Boolean).map((u) => {
+          const q = u.indexOf("?"); const h = u.indexOf("#");
+          let end = u.length;
+          if (q !== -1) end = Math.min(end, q);
+          if (h !== -1) end = Math.min(end, h);
+          return u.slice(0, end);
+        })))}
       />
 
       {fetchError && (
@@ -354,6 +363,7 @@ export async function GscContent({ searchParams: sp, overviewHref, gscHref, ga4H
             position: currentTotals.position,
             ctr: currentTotals.ctr,
             impressionsChange: pct(currentTotals.impressions, previousTotals.impressions),
+            clicksChange: pct(currentTotals.clicks, previousTotals.clicks),
             rankChange: pct(currentTotals.position, previousTotals.position),
             ctrChange: pct(currentTotals.ctr, previousTotals.ctr),
           }}

@@ -1,8 +1,6 @@
 "use client";
 
 import {
-  Bar,
-  BarChart,
   CartesianGrid,
   Line,
   LineChart,
@@ -101,9 +99,9 @@ export function MetricSection({ data }: { data: MetricSectionData }) {
               </p>
               <div className="h-10 mt-1">
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={c.bars} margin={{ top: 2, right: 0, bottom: 0, left: 0 }}>
-                    <Bar dataKey="value" fill="#c4b5fd" />
-                  </BarChart>
+                  <LineChart data={c.bars} margin={{ top: 2, right: 0, bottom: 0, left: 0 }}>
+                    <Line type="monotone" dataKey="value" stroke="#7c3aed" strokeWidth={1.5} dot={false} />
+                  </LineChart>
                 </ResponsiveContainer>
               </div>
             </div>

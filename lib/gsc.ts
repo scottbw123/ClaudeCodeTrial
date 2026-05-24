@@ -34,6 +34,40 @@ export function escapeRegex(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
+/**
+ * Strips ?query and #fragment from a URL so different parameter variants of the
+ * same canonical page roll up into a single row.
+ */
+export function normalizePageUrl(url: string): string {
+  if (!url) return url;
+  let end = url.length;
+  const q = url.indexOf("?");
+  const h = url.indexOf("#");
+  if (q !== -1) end = Math.min(end, q);
+  if (h !== -1) end = Math.min(end, h);
+  return url.slice(0, end);
+}
+
+export function mergePageRowsByNormalizedUrl(rows: GscRow[]): GscRow[] {
+  const grouped = new Map<string, GscRow>();
+  for (const r of rows) {
+    const norm = normalizePageUrl(r.keys[0] ?? "");
+    const existing = grouped.get(norm);
+    if (!existing) {
+      grouped.set(norm, { keys: [norm], clicks: r.clicks, impressions: r.impressions, ctr: r.ctr, position: r.position });
+    } else {
+      const oldImps = existing.impressions;
+      const newImps = r.impressions;
+      const totalImps = oldImps + newImps;
+      existing.clicks += r.clicks;
+      existing.impressions = totalImps;
+      existing.position = totalImps > 0 ? (existing.position * oldImps + r.position * newImps) / totalImps : 0;
+      existing.ctr = totalImps > 0 ? existing.clicks / totalImps : 0;
+    }
+  }
+  return Array.from(grouped.values()).sort((a, b) => b.impressions - a.impressions);
+}
+
 export async function queryGsc(opts: {
   siteUrl: string;
   startDate: string;
@@ -128,36 +162,38 @@ export async function queryGscFiltered(opts: {
   dimensions: GscDimension[];
   rowLimit?: number;
   filterQueries?: string[];
-  filterQueriesMode?: FilterMode;
+  filterQueriesExclude?: string[];
   filterPages?: string[];
+  filterPagesExclude?: string[];
+  // Back-compat with the older mode-based API.
+  filterQueriesMode?: FilterMode;
   filterPagesMode?: FilterMode;
 }): Promise<GscRow[]> {
-  const queries = opts.filterQueries ?? [];
-  const queriesMode = opts.filterQueriesMode ?? "include";
-  const pages = opts.filterPages ?? [];
-  const pagesMode = opts.filterPagesMode ?? "include";
+  // Resolve back-compat mode → split into include/exclude
+  let queryInc = opts.filterQueries ?? [];
+  let queryExc = opts.filterQueriesExclude ?? [];
+  let pageInc = opts.filterPages ?? [];
+  let pageExc = opts.filterPagesExclude ?? [];
+  if (opts.filterQueriesMode === "exclude" && queryInc.length > 0 && queryExc.length === 0) {
+    queryExc = queryInc;
+    queryInc = [];
+  }
+  if (opts.filterPagesMode === "exclude" && pageInc.length > 0 && pageExc.length === 0) {
+    pageExc = pageInc;
+    pageInc = [];
+  }
 
-  // Resolve effective include/exclude per dimension
-  const queryIncludeValues = queriesMode === "include" ? queries : [];
-  const queryExcludeValues = queriesMode === "exclude" ? queries : [];
-  const pageIncludeValues = pagesMode === "include" ? pages : [];
-  const pageExcludeValues = pagesMode === "exclude" ? pages : [];
-
-  // Exclude filters always go into the same single query — they AND together natively.
   const excludeFilters = [
-    ...buildExcludeFilters("query", queryExcludeValues),
-    ...buildExcludeFilters("page", pageExcludeValues),
+    ...buildExcludeFilters("query", queryExc),
+    ...buildExcludeFilters("page", pageExc),
   ];
 
-  // Include filters use substring semantics — must fit in a single GSC request
-  // (parallel batching would double-count queries that match patterns across batches).
-  // GSC enforces a 4096-byte regex limit; with typical substring patterns that's room
-  // for ~150-400 entries depending on length.
   const filters: GscFilter[] = [...excludeFilters];
-  const q = buildRegexFilter("query", queryIncludeValues);
+  const q = buildRegexFilter("query", queryInc);
   if (q) filters.push(q);
-  const p = buildRegexFilter("page", pageIncludeValues);
+  const p = buildRegexFilter("page", pageInc);
   if (p) filters.push(p);
+
   return queryGsc({
     siteUrl: opts.siteUrl,
     startDate: opts.startDate,

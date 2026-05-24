@@ -35,9 +35,11 @@ function Delta({ change, invert }: { change: number; invert?: boolean }) {
 export interface DeviceRow {
   device: string;
   impressions: number;
+  clicks: number;
   rank: number;
   ctr: number;
   impressionsChange: number;
+  clicksChange: number;
   rankChange: number;
   ctrChange: number;
 }
@@ -58,7 +60,7 @@ export function DemographicsSection({
 }: {
   devices: DeviceRow[];
   countries: CountryRow[];
-  totals: { impressions: number; clicks: number; position: number; ctr: number; impressionsChange: number; rankChange: number; ctrChange: number };
+  totals: { impressions: number; clicks: number; position: number; ctr: number; impressionsChange: number; clicksChange: number; rankChange: number; ctrChange: number };
 }) {
   const deviceImpressions = devices.reduce((s, d) => s + d.impressions, 0) || 1;
 
@@ -93,6 +95,8 @@ export function DemographicsSection({
                   <th className="px-3 py-2 text-left font-semibold">Device</th>
                   <th className="px-3 py-2 text-right font-semibold">Impressions</th>
                   <th className="px-3 py-2 text-right font-semibold">% Δ</th>
+                  <th className="px-3 py-2 text-right font-semibold">Clicks</th>
+                  <th className="px-3 py-2 text-right font-semibold">% Δ</th>
                   <th className="px-3 py-2 text-right font-semibold">Rank</th>
                   <th className="px-3 py-2 text-right font-semibold">% Δ</th>
                   <th className="px-3 py-2 text-right font-semibold">CTR</th>
@@ -105,6 +109,8 @@ export function DemographicsSection({
                     <td className="px-3 py-1.5 font-medium">{d.device}</td>
                     <td className="px-3 py-1.5 text-right tabular-nums">{formatInt(d.impressions)}</td>
                     <td className="px-3 py-1.5 text-right"><Delta change={d.impressionsChange} /></td>
+                    <td className="px-3 py-1.5 text-right tabular-nums">{formatInt(d.clicks)}</td>
+                    <td className="px-3 py-1.5 text-right"><Delta change={d.clicksChange} /></td>
                     <td className="px-3 py-1.5 text-right tabular-nums">{d.rank.toFixed(0)}</td>
                     <td className="px-3 py-1.5 text-right"><Delta change={d.rankChange} invert /></td>
                     <td className="px-3 py-1.5 text-right tabular-nums">{formatPct(d.ctr)}</td>
@@ -115,6 +121,8 @@ export function DemographicsSection({
                   <td className="px-3 py-2">Grand total</td>
                   <td className="px-3 py-2 text-right tabular-nums">{formatInt(totals.impressions)}</td>
                   <td className="px-3 py-2 text-right"><Delta change={totals.impressionsChange} /></td>
+                  <td className="px-3 py-2 text-right tabular-nums">{formatInt(totals.clicks)}</td>
+                  <td className="px-3 py-2 text-right"><Delta change={totals.clicksChange} /></td>
                   <td className="px-3 py-2 text-right tabular-nums">{totals.position.toFixed(0)}</td>
                   <td className="px-3 py-2 text-right"><Delta change={totals.rankChange} invert /></td>
                   <td className="px-3 py-2 text-right tabular-nums">{formatPct(totals.ctr)}</td>

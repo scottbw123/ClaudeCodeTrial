@@ -8,30 +8,41 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-cormorant), Georgia, serif;
+  --font-sans: var(--font-jost), -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   --font-serif: var(--font-cormorant), Georgia, serif;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: var(--font-cormorant), Georgia, serif;
+  font-family: var(--font-jost), -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-weight: 400;
 }
 
-/* Sharp corners everywhere — no rounded borders. */
+/* Sharp corners — no rounded borders anywhere. */
 * {
   border-radius: 0 !important;
 }
 
-/* Headings: bold italic Cormorant. */
+/* Headings: bold italic Cormorant Garamond. */
 h1, h2, h3, h4, h5, h6 {
   font-family: var(--font-cormorant), Georgia, serif;
   font-style: italic;
   font-weight: 700;
+  letter-spacing: -0.01em;
 }
 
-/* Tabular numbers stay legible with the serif. */
+/* Tabular numbers stay legible. */
 .tabular-nums {
   font-variant-numeric: tabular-nums;
   font-feature-settings: "tnum";
+}
+
+/* Soft fade-in for page content on navigation — feels responsive when switching tabs. */
+@keyframes page-fade-in {
+  from { opacity: 0.45; filter: blur(2px); }
+  to   { opacity: 1;    filter: blur(0); }
+}
+main {
+  animation: page-fade-in 220ms ease-out;
 }

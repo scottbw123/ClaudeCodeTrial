@@ -114,7 +114,11 @@ export async function OverviewContent({ searchParams: sp, overviewHref, gscHref,
     : [];
 
   const organicFilter: Ga4Filter[] = [{ fieldName: "sessionDefaultChannelGroup", value: "Organic Search" }];
-  const aiAllFilter: Ga4Filter[] = [{ fieldName: "sessionSource", values: AI_SOURCES }];
+  // AI Referral = AI sources arriving via referral medium specifically (not organic, etc.)
+  const aiAllFilter: Ga4Filter[] = [
+    { fieldName: "sessionSource", values: AI_SOURCES },
+    { fieldName: "sessionMedium", value: "referral" },
+  ];
   const directFilter: Ga4Filter[] = [{ fieldName: "sessionDefaultChannelGroup", value: "Direct" }];
   const eventFilter: Ga4Filter[] = conversionEvents.length > 0
     ? [{ fieldName: "eventName", values: conversionEvents }]
@@ -197,6 +201,10 @@ export async function OverviewContent({ searchParams: sp, overviewHref, gscHref,
   const nbPositionPrev = weightedPosition(gNonBrandedPrev);
   const nbCtr = ratio(nbClicks, nbImpressions);
   const nbCtrPrev = ratio(nbClicksPrev, nbImpressionsPrev);
+  const brandedPosition = weightedPosition(gBranded);
+  const brandedPositionPrev = weightedPosition(gBrandedPrev);
+  const brandedCtr = ratio(brandedClicks, brandedImpressions);
+  const brandedCtrPrev = ratio(brandedClicksPrev, brandedImpressionsPrev);
 
   // GA4 averaged metrics — use mean across days where data exists (simple)
   const meanOf = (rows: DailyRow[]): number => {
@@ -220,45 +228,37 @@ export async function OverviewContent({ searchParams: sp, overviewHref, gscHref,
   const conversionRate = ratio(eventsTotal, usersTotal);
   const conversionRatePrev = ratio(eventsTotalPrev, usersTotalPrev);
 
-  const layer1Cards = [
+  const layer1Totals = [
     { label: "Impressions (Total)", source: "GSC" as const, value: formatBig(totalImpressions), changePercent: pct(totalImpressions, totalImpressionsPrev), data: spark(gAll, 0) },
-    { label: "Impressions (Branded)", source: "GSC" as const, value: formatBig(brandedImpressions), changePercent: pct(brandedImpressions, brandedImpressionsPrev), data: spark(gBranded, 0) },
-    { label: "Impressions (Non-Branded)", source: "GSC" as const, value: formatBig(nbImpressions), changePercent: pct(nbImpressions, nbImpressionsPrev), data: spark(gNonBranded, 0) },
-    { label: "Avg. Position (Non-Branded)", source: "GSC" as const, value: nbPosition > 0 ? nbPosition.toFixed(1) : "—", changePercent: pct(nbPosition, nbPositionPrev), invertColors: true, data: spark(gNonBranded, 3) },
     { label: "Bounce Rate (Organic Search)", source: "GA4" as const, value: formatPct(bounceRate), changePercent: pct(bounceRate, bounceRatePrev), invertColors: true, data: spark(bounceDaily, 0) },
     { label: "Avg. Session Duration (Organic Search)", source: "GA4" as const, value: formatDuration(avgDuration), changePercent: pct(avgDuration, avgDurationPrev), data: spark(durDaily, 0) },
   ];
+  const layer1Branded = [
+    { label: "Impressions (Branded)", source: "GSC" as const, value: formatBig(brandedImpressions), changePercent: pct(brandedImpressions, brandedImpressionsPrev), data: spark(gBranded, 0) },
+    { label: "Avg. Position (Branded)", source: "GSC" as const, value: brandedPosition > 0 ? brandedPosition.toFixed(1) : "—", changePercent: pct(brandedPosition, brandedPositionPrev), invertColors: true, data: spark(gBranded, 3) },
+  ];
+  const layer1NonBranded = [
+    { label: "Impressions (Non-Branded)", source: "GSC" as const, value: formatBig(nbImpressions), changePercent: pct(nbImpressions, nbImpressionsPrev), data: spark(gNonBranded, 0) },
+    { label: "Avg. Position (Non-Branded)", source: "GSC" as const, value: nbPosition > 0 ? nbPosition.toFixed(1) : "—", changePercent: pct(nbPosition, nbPositionPrev), invertColors: true, data: spark(gNonBranded, 3) },
+  ];
 
-  const layer2Cards = [
+  const layer2Totals = [
     { label: "Clicks (Total)", source: "GSC" as const, value: formatBig(totalClicks), changePercent: pct(totalClicks, totalClicksPrev), data: spark(gAll, 1) },
+    { label: "AI Referral Traffic (Referral medium only)", source: "GA4" as const, value: formatBig(aiTotal), changePercent: pct(aiTotal, aiTotalPrev), data: spark(aiDaily, 0) },
+    { label: "Direct Source Traffic", source: "GA4" as const, value: formatBig(directTotal), changePercent: pct(directTotal, directTotalPrev), data: spark(directDaily, 0) },
+  ];
+  const layer2Branded = [
     { label: "Clicks (Branded)", source: "GSC" as const, value: formatBig(brandedClicks), changePercent: pct(brandedClicks, brandedClicksPrev), data: spark(gBranded, 1) },
+    { label: "CTR (Branded)", source: "GSC" as const, value: formatPct(brandedCtr), changePercent: pct(brandedCtr, brandedCtrPrev), data: spark(gBranded, 2) },
+  ];
+  const layer2NonBranded = [
     { label: "Clicks (Non-Branded)", source: "GSC" as const, value: formatBig(nbClicks), changePercent: pct(nbClicks, nbClicksPrev), data: spark(gNonBranded, 1) },
     { label: "CTR (Non-Branded)", source: "GSC" as const, value: formatPct(nbCtr), changePercent: pct(nbCtr, nbCtrPrev), data: spark(gNonBranded, 2) },
-    { label: "AI Referral Traffic", source: "GA4" as const, value: formatBig(aiTotal), changePercent: pct(aiTotal, aiTotalPrev), data: spark(aiDaily, 0) },
-    { label: "Direct Source Traffic", source: "GA4" as const, value: formatBig(directTotal), changePercent: pct(directTotal, directTotalPrev), data: spark(directDaily, 0) },
   ];
 
   const layer3Cards = [
     { label: `Organic Conversions (Events: ${conversionEvents.length > 0 ? `${conversionEvents.length} selected` : "all"})`, source: "GA4" as const, value: formatBig(eventsTotal), changePercent: pct(eventsTotal, eventsTotalPrev), data: spark(eventsDaily, 0) },
     { label: "Conversion Rate (Events / Users)", source: "GA4" as const, value: formatPct(conversionRate, 2), changePercent: pct(conversionRate, conversionRatePrev), data: spark(eventsDaily, 0) },
-  ];
-
-  const layers = [
-    {
-      title: "Layer #1: Leading Indicators",
-      description: "Ranged objectives based on historical trends and industry data.",
-      cards: layer1Cards,
-    },
-    {
-      title: "Layer #2: Outcome Ranges",
-      description: "Broad outcomes to continue to refine and track based on wide-factor results.",
-      cards: layer2Cards,
-    },
-    {
-      title: "Layer #3: Business Validation",
-      description: "Ultimate objectives to validate success and opportunity after designated time ranges.",
-      cards: layer3Cards,
-    },
   ];
 
   return (
@@ -299,30 +299,80 @@ export async function OverviewContent({ searchParams: sp, overviewHref, gscHref,
         </div>
       )}
 
-      {brandedTerms.length > 0 && (
-        <section className="max-w-[1400px] mx-auto px-6 mt-6">
-          <BrandedComparison
-            brandedImpressions={brandedImpressions}
-            nbImpressions={nbImpressions}
-            brandedClicks={brandedClicks}
-            nbClicks={nbClicks}
-          />
-        </section>
-      )}
+      {/* Layer #1 */}
+      <section className="max-w-[1400px] mx-auto px-6 mt-8">
+        <div className="mb-3 border-b border-gray-300 pb-2">
+          <h2 className="text-2xl text-gray-900">Layer #1: Leading Indicators</h2>
+          <p className="text-sm text-gray-500 not-italic">Ranged objectives based on historical trends and industry data.</p>
+        </div>
+        {brandedTerms.length > 0 && (
+          <div className="mb-4">
+            <BrandedComparison
+              brandedImpressions={brandedImpressions}
+              nbImpressions={nbImpressions}
+              brandedClicks={brandedClicks}
+              nbClicks={nbClicks}
+            />
+          </div>
+        )}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
+          {layer1Totals.map((c) => <OverviewMetricCard key={c.label} {...c} />)}
+        </div>
+        {brandedTerms.length > 0 && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <h3 className="text-base text-gray-700 mb-2 not-italic font-semibold">Branded</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {layer1Branded.map((c) => <OverviewMetricCard key={c.label} {...c} />)}
+              </div>
+            </div>
+            <div>
+              <h3 className="text-base text-gray-700 mb-2 not-italic font-semibold">Non-Branded</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {layer1NonBranded.map((c) => <OverviewMetricCard key={c.label} {...c} />)}
+              </div>
+            </div>
+          </div>
+        )}
+      </section>
 
-      {layers.map((layer) => (
-        <section key={layer.title} className="max-w-[1400px] mx-auto px-6 mt-8">
-          <div className="mb-3 border-b border-gray-300 pb-2">
-            <h2 className="text-2xl text-gray-900">{layer.title}</h2>
-            <p className="text-sm text-gray-500 not-italic">{layer.description}</p>
+      {/* Layer #2 */}
+      <section className="max-w-[1400px] mx-auto px-6 mt-8">
+        <div className="mb-3 border-b border-gray-300 pb-2">
+          <h2 className="text-2xl text-gray-900">Layer #2: Outcome Ranges</h2>
+          <p className="text-sm text-gray-500 not-italic">Broad outcomes to continue to refine and track based on wide-factor results.</p>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
+          {layer2Totals.map((c) => <OverviewMetricCard key={c.label} {...c} />)}
+        </div>
+        {brandedTerms.length > 0 && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <h3 className="text-base text-gray-700 mb-2 not-italic font-semibold">Branded</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {layer2Branded.map((c) => <OverviewMetricCard key={c.label} {...c} />)}
+              </div>
+            </div>
+            <div>
+              <h3 className="text-base text-gray-700 mb-2 not-italic font-semibold">Non-Branded</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {layer2NonBranded.map((c) => <OverviewMetricCard key={c.label} {...c} />)}
+              </div>
+            </div>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
-            {layer.cards.map((c) => (
-              <OverviewMetricCard key={c.label} {...c} />
-            ))}
-          </div>
-        </section>
-      ))}
+        )}
+      </section>
+
+      {/* Layer #3 — GA4 only, no branded/non-branded split */}
+      <section className="max-w-[1400px] mx-auto px-6 mt-8">
+        <div className="mb-3 border-b border-gray-300 pb-2">
+          <h2 className="text-2xl text-gray-900">Layer #3: Business Validation</h2>
+          <p className="text-sm text-gray-500 not-italic">Ultimate objectives to validate success and opportunity after designated time ranges.</p>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {layer3Cards.map((c) => <OverviewMetricCard key={c.label} {...c} />)}
+        </div>
+      </section>
 
       <PresentationFooter generatedAt={new Date()} />
     </main>

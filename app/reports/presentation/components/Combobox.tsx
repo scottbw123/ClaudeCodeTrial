@@ -2,21 +2,18 @@
 
 import { useEffect, useRef, useState } from "react";
 
-export type FilterMode = "include" | "exclude";
-
 export interface ComboboxProps {
   label: string;
   values: string[];
+  excludeValues?: string[];
   options: string[];
-  onChange: (values: string[], mode: FilterMode) => void;
+  onChange: (values: string[], excludeValues: string[]) => void;
   multi?: boolean;
-  mode?: FilterMode;
   placeholder?: string;
   /**
-   * If true, bulk "matching" actions add the SEARCH TEXT as a single substring chip
-   * (avoids stuffing thousands of items into the URL). Use for filters that the server
-   * resolves with substring/regex matching (e.g. GSC query/page, GA4 pageLocation CONTAINS).
-   * If false, bulk actions add individual matching items (capped to BULK_CAP).
+   * If true, "Select all" / "Deselect all" buttons with an active search add the search
+   * text as ONE substring chip (efficient, no URL bloat). If false, they expand to the
+   * matching individual items (capped at BULK_CAP for exact-match filters like GA4 channel).
    */
   substringMode?: boolean;
 }
@@ -24,7 +21,16 @@ export interface ComboboxProps {
 const RENDER_CAP = 500;
 const BULK_CAP = 50;
 
-export function Combobox({ label, values, options, onChange, multi = false, mode = "include", placeholder, substringMode = false }: ComboboxProps) {
+export function Combobox({
+  label,
+  values,
+  excludeValues = [],
+  options,
+  onChange,
+  multi = false,
+  placeholder,
+  substringMode = false,
+}: ComboboxProps) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
   const containerRef = useRef<HTMLDivElement>(null);
@@ -47,128 +53,94 @@ export function Combobox({ label, values, options, onChange, multi = false, mode
     ? options.filter((o) => o.toLowerCase().includes(lowerSearch))
     : options;
 
-  function isChecked(opt: string): boolean {
-    if (mode === "include") return values.includes(opt);
-    return !values.includes(opt);
-  }
+  const includeSet = new Set(values);
+  const excludeSet = new Set(excludeValues);
 
   function toggle(opt: string) {
     if (!multi) {
-      onChange([opt], "include");
+      onChange([opt], []);
       setOpen(false);
       setSearch("");
       return;
     }
-    if (mode === "include") {
-      onChange(
-        values.includes(opt) ? values.filter((v) => v !== opt) : [...values, opt],
-        "include"
-      );
+    if (includeSet.has(opt)) {
+      onChange(values.filter((v) => v !== opt), excludeValues);
     } else {
-      // exclude mode: clicking flips the exclusion
-      onChange(
-        values.includes(opt) ? values.filter((v) => v !== opt) : [...values, opt],
-        "exclude"
-      );
+      onChange([...values, opt], excludeValues.filter((v) => v !== opt));
     }
   }
 
-  function selectAllNoLimit() {
-    onChange([], "exclude");
+  function addInclude(term: string) {
+    const next = includeSet.has(term) ? values : [...values, term];
+    const nextExc = excludeValues.filter((v) => v !== term);
+    onChange(next, nextExc);
   }
 
-  function selectAllMatching() {
+  function addExclude(term: string) {
+    const nextExc = excludeSet.has(term) ? excludeValues : [...excludeValues, term];
+    const next = values.filter((v) => v !== term);
+    onChange(next, nextExc);
+  }
+
+  function selectAll() {
     if (!multi) return;
+    const term = search.trim();
+    if (!term) {
+      // No search: clear all filters → "everything matches".
+      onChange([], []);
+      return;
+    }
     if (substringMode) {
-      const term = search.trim();
-      if (!term) return;
-      if (mode === "include") {
-        if (!values.includes(term)) onChange([...values, term], "include");
-      } else {
-        onChange(values.filter((v) => v !== term), "exclude");
-      }
+      addInclude(term);
       setSearch("");
       return;
     }
     const take = filtered.slice(0, BULK_CAP);
-    if (mode === "include") {
-      const merged = Array.from(new Set([...values, ...take]));
-      onChange(merged, "include");
-    } else {
-      onChange(values.filter((v) => !take.includes(v)), "exclude");
-    }
+    const merged = Array.from(new Set([...values, ...take]));
+    const nextExc = excludeValues.filter((v) => !take.includes(v));
+    onChange(merged, nextExc);
   }
 
-  function deselectAllMatching() {
+  function deselectAll() {
     if (!multi) return;
+    const term = search.trim();
+    if (!term) {
+      // No search: clear all chips. Empty includes + excludes = no filter = everything.
+      onChange([], []);
+      return;
+    }
     if (substringMode) {
-      const term = search.trim();
-      if (!term) return;
-      if (mode === "exclude") {
-        if (!values.includes(term)) onChange([...values, term], "exclude");
-      } else {
-        onChange(values.filter((v) => v !== term), "include");
-      }
+      addExclude(term);
       setSearch("");
       return;
     }
     const take = filtered.slice(0, BULK_CAP);
-    if (mode === "include") {
-      onChange(values.filter((v) => !take.includes(v)), "include");
-    } else {
-      const merged = Array.from(new Set([...values, ...take]));
-      onChange(merged, "exclude");
-    }
+    const stripped = values.filter((v) => !take.includes(v));
+    const mergedExc = Array.from(new Set([...excludeValues, ...take]));
+    onChange(stripped, mergedExc);
   }
 
   function clearAll() {
-    onChange([], "include");
+    onChange([], []);
     setSearch("");
   }
 
-  let triggerText: React.ReactNode;
-  let triggerCount: number | null = null;
-  if (mode === "exclude") {
-    triggerCount = values.length;
-    triggerText = values.length === 0 ? "All selected" : `All except ${values.length}`;
-  } else if (values.length === 0) {
-    triggerText = <span className="text-gray-400 px-1">{placeholder ?? "Select…"}</span>;
-  } else {
-    triggerCount = values.length;
-    triggerText = (
-      <>
-        {values.slice(0, 3).map((v) => (
-          <span key={v} className="inline-flex items-center gap-1 rounded bg-gray-100 px-1.5 py-0.5 text-xs">
-            <span className="truncate max-w-[140px]" title={v}>{v}</span>
-            <span
-              role="button"
-              tabIndex={0}
-              onClick={(e) => {
-                e.stopPropagation();
-                toggle(v);
-              }}
-              className="text-gray-500 hover:text-gray-900 cursor-pointer"
-              aria-label={`Remove ${v}`}
-            >
-              ×
-            </span>
-          </span>
-        ))}
-        {values.length > 3 && <span className="text-xs text-gray-500">+{values.length - 3} more</span>}
-      </>
-    );
+  function removeInclude(v: string) {
+    onChange(values.filter((x) => x !== v), excludeValues);
   }
+  function removeExclude(v: string) {
+    onChange(values, excludeValues.filter((x) => x !== v));
+  }
+
+  const hasAny = values.length > 0 || excludeValues.length > 0;
+  const totalChips = values.length + excludeValues.length;
 
   return (
     <div ref={containerRef} className="flex flex-col relative">
       <div className="flex items-center justify-between mb-1">
-        <span className="text-[10px] uppercase tracking-wide text-gray-500">{label}</span>
-        {(values.length > 0 || mode === "exclude") && (
-          <button
-            type="button"
-            onClick={clearAll}
-            className="text-[10px] text-gray-400 hover:text-gray-700"
-          >
+        <span className="text-[10px] uppercase tracking-wide text-gray-500 not-italic">{label}</span>
+        {hasAny && (
+          <button type="button" onClick={clearAll} className="text-[10px] text-gray-400 hover:text-gray-700">
             Clear
           </button>
         )}
@@ -176,18 +148,43 @@ export function Combobox({ label, values, options, onChange, multi = false, mode
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="flex flex-wrap items-center gap-1 min-h-[36px] w-full rounded-md border border-gray-300 bg-white px-2 py-1 text-left text-sm hover:border-gray-400"
+        className="flex flex-wrap items-center gap-1 min-h-[36px] w-full border border-gray-300 bg-white px-2 py-1 text-left text-sm hover:border-gray-400"
       >
-        {triggerCount === null || mode === "exclude" ? (
-          <span className={mode === "exclude" ? "text-gray-700 px-1 text-xs font-medium" : ""}>{triggerText}</span>
+        {!hasAny ? (
+          <span className="text-gray-400 px-1">{placeholder ?? "Select…"}</span>
         ) : (
-          triggerText
+          <>
+            {values.slice(0, 2).map((v) => (
+              <span key={`i-${v}`} className="inline-flex items-center gap-1 bg-indigo-50 text-indigo-800 px-1.5 py-0.5 text-xs border border-indigo-200">
+                <span className="truncate max-w-[120px]" title={`Include: ${v}`}>{v}</span>
+                <span
+                  role="button"
+                  tabIndex={0}
+                  onClick={(e) => { e.stopPropagation(); removeInclude(v); }}
+                  className="text-indigo-500 hover:text-indigo-900 cursor-pointer"
+                >×</span>
+              </span>
+            ))}
+            {excludeValues.slice(0, 2).map((v) => (
+              <span key={`e-${v}`} className="inline-flex items-center gap-1 bg-rose-50 text-rose-800 px-1.5 py-0.5 text-xs border border-rose-200">
+                <span className="text-rose-400">−</span>
+                <span className="truncate max-w-[120px]" title={`Exclude: ${v}`}>{v}</span>
+                <span
+                  role="button"
+                  tabIndex={0}
+                  onClick={(e) => { e.stopPropagation(); removeExclude(v); }}
+                  className="text-rose-500 hover:text-rose-900 cursor-pointer"
+                >×</span>
+              </span>
+            ))}
+            {totalChips > 4 && <span className="text-xs text-gray-500">+{totalChips - 4} more</span>}
+          </>
         )}
         <span className="ml-auto text-gray-400">▾</span>
       </button>
 
       {open && (
-        <div className="absolute top-full left-0 right-0 z-30 mt-1 rounded-md border border-gray-300 bg-white shadow-lg overflow-hidden">
+        <div className="absolute top-full left-0 right-0 z-30 mt-1 border border-gray-300 bg-white shadow-lg overflow-hidden">
           <div className="border-b border-gray-100 p-2">
             <input
               type="text"
@@ -197,43 +194,46 @@ export function Combobox({ label, values, options, onChange, multi = false, mode
               onKeyDown={(e) => {
                 if (e.key === "Enter" && multi && search.trim()) {
                   e.preventDefault();
-                  const term = search.trim();
-                  if (mode === "include") {
-                    if (!values.includes(term)) onChange([...values, term], "include");
+                  if (substringMode) {
+                    addInclude(search.trim());
+                    setSearch("");
                   } else {
-                    if (!values.includes(term)) onChange([...values, term], "exclude");
+                    const term = search.trim();
+                    if (options.includes(term)) addInclude(term);
+                    setSearch("");
                   }
-                  setSearch("");
                 }
               }}
-              placeholder={`Search ${options.length.toLocaleString()} options or type custom term…`}
-              className="w-full outline-none text-sm px-2 py-1 rounded border border-gray-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+              placeholder={`Search ${options.length.toLocaleString()} options…`}
+              className="w-full outline-none text-sm px-2 py-1 border border-gray-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
             />
             {multi && (
               <div className="flex flex-col gap-1 mt-1.5">
                 <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs items-center">
-                  <span className="text-[10px] uppercase tracking-wide text-gray-400">All:</span>
-                  <button type="button" onClick={selectAllNoLimit} className="text-blue-600 hover:underline font-medium">
-                    Select all
+                  <button
+                    type="button"
+                    onClick={selectAll}
+                    className="text-indigo-700 hover:underline font-medium"
+                    title={search.trim() ? `Include items matching "${search.trim()}"` : "Clear all filters"}
+                  >
+                    {search.trim()
+                      ? (substringMode ? `Include "${search.trim()}"` : `Select ${Math.min(filtered.length, BULK_CAP)} matching`)
+                      : "Reset to all"}
                   </button>
-                  <button type="button" onClick={clearAll} className="text-gray-700 hover:underline">
-                    Deselect all
+                  <button
+                    type="button"
+                    onClick={deselectAll}
+                    className="text-rose-700 hover:underline font-medium"
+                    title={search.trim() ? `Exclude items matching "${search.trim()}"` : "Clear all filters"}
+                  >
+                    {search.trim()
+                      ? (substringMode ? `Exclude "${search.trim()}"` : `Remove ${Math.min(filtered.length, BULK_CAP)} matching`)
+                      : "Clear all"}
                   </button>
-                  {search.trim() !== "" && filtered.length > 0 && (
-                    <>
-                      <span className="text-[10px] uppercase tracking-wide text-gray-400 ml-2">Matching:</span>
-                      <button type="button" onClick={selectAllMatching} className="text-blue-600 hover:underline font-medium">
-                        Select {filtered.length.toLocaleString()}
-                      </button>
-                      <button type="button" onClick={deselectAllMatching} className="text-gray-700 hover:underline">
-                        Deselect {filtered.length.toLocaleString()}
-                      </button>
-                    </>
-                  )}
                 </div>
-                {search.trim() !== "" && (
-                  <span className="text-[10px] text-gray-500">
-                    Press <kbd className="px-1 py-0.5 rounded bg-gray-100 border border-gray-300 font-mono">Enter</kbd> to add &ldquo;{search.trim()}&rdquo; as a substring filter
+                {search.trim() !== "" && substringMode && (
+                  <span className="text-[10px] text-gray-500 not-italic">
+                    Press <kbd className="px-1 py-0.5 bg-gray-100 border border-gray-300 font-mono">Enter</kbd> to include &ldquo;{search.trim()}&rdquo;
                   </span>
                 )}
               </div>
@@ -244,15 +244,16 @@ export function Combobox({ label, values, options, onChange, multi = false, mode
               <div className="px-3 py-3 text-sm text-gray-400">No matches</div>
             ) : (
               filtered.slice(0, RENDER_CAP).map((o) => {
-                const checked = isChecked(o);
+                const isInc = includeSet.has(o);
+                const isExc = excludeSet.has(o);
                 return (
                   <label
                     key={o}
-                    className="flex items-center gap-2 px-3 py-1.5 text-sm hover:bg-gray-50 cursor-pointer"
+                    className={`flex items-center gap-2 px-3 py-1.5 text-sm hover:bg-gray-50 cursor-pointer ${isExc ? "text-rose-700 line-through" : ""}`}
                   >
                     <input
                       type="checkbox"
-                      checked={checked}
+                      checked={isInc}
                       onChange={() => toggle(o)}
                       className="shrink-0"
                     />
@@ -262,16 +263,14 @@ export function Combobox({ label, values, options, onChange, multi = false, mode
               })
             )}
             {filtered.length > RENDER_CAP && (
-              <div className="px-3 py-2 text-xs text-gray-400 border-t border-gray-100">
-                Showing first {RENDER_CAP.toLocaleString()} of {filtered.length.toLocaleString()} matches. Narrow your search to see more.
+              <div className="px-3 py-2 text-xs text-gray-400 border-t border-gray-100 not-italic">
+                Showing first {RENDER_CAP.toLocaleString()} of {filtered.length.toLocaleString()} matches.
               </div>
             )}
           </div>
-          <div className="border-t border-gray-100 px-3 py-1.5 text-[11px] text-gray-500 flex justify-between items-center bg-white">
+          <div className="border-t border-gray-100 px-3 py-1.5 text-[11px] text-gray-500 flex justify-between items-center bg-white not-italic">
             <span>
-              {mode === "exclude"
-                ? `All ${options.length.toLocaleString()} except ${values.length} excluded`
-                : `${values.length} selected · ${filtered.length.toLocaleString()} matching`}
+              {values.length} included · {excludeValues.length} excluded · {filtered.length.toLocaleString()} shown
             </span>
             <button
               type="button"

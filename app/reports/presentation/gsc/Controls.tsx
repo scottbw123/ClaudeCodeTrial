@@ -3,7 +3,7 @@
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState, useTransition } from "react";
 import type { GscSite } from "@/lib/gsc";
-import { Combobox, type FilterMode } from "../components/Combobox";
+import { Combobox } from "../components/Combobox";
 import { RefreshButton } from "../components/RefreshButton";
 
 const PRESET_DAYS = [
@@ -22,9 +22,9 @@ export function GscControls({
   currentStart,
   currentEnd,
   currentQueries,
-  currentQueriesMode,
+  currentQueriesExclude,
   currentPages,
-  currentPagesMode,
+  currentPagesExclude,
   queryOptions,
   pageOptions,
 }: {
@@ -34,9 +34,9 @@ export function GscControls({
   currentStart: string;
   currentEnd: string;
   currentQueries: string[];
-  currentQueriesMode: FilterMode;
+  currentQueriesExclude: string[];
   currentPages: string[];
-  currentPagesMode: FilterMode;
+  currentPagesExclude: string[];
   queryOptions: string[];
   pageOptions: string[];
 }) {
@@ -45,15 +45,15 @@ export function GscControls({
   const [pending, startTransition] = useTransition();
 
   const [localQueries, setLocalQueries] = useState(currentQueries);
-  const [localQueriesMode, setLocalQueriesMode] = useState<FilterMode>(currentQueriesMode);
+  const [localQueriesExc, setLocalQueriesExc] = useState(currentQueriesExclude);
   const [localPages, setLocalPages] = useState(currentPages);
-  const [localPagesMode, setLocalPagesMode] = useState<FilterMode>(currentPagesMode);
+  const [localPagesExc, setLocalPagesExc] = useState(currentPagesExclude);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => setLocalQueries(currentQueries), [currentQueries.join(",")]);
-  useEffect(() => setLocalQueriesMode(currentQueriesMode), [currentQueriesMode]);
+  useEffect(() => setLocalQueriesExc(currentQueriesExclude), [currentQueriesExclude.join(",")]);
   useEffect(() => setLocalPages(currentPages), [currentPages.join(",")]);
-  useEffect(() => setLocalPagesMode(currentPagesMode), [currentPagesMode]);
+  useEffect(() => setLocalPagesExc(currentPagesExclude), [currentPagesExclude.join(",")]);
 
   function buildSp(updates: Record<string, string | null>) {
     const sp = new URLSearchParams(searchParams.toString());
@@ -88,8 +88,8 @@ export function GscControls({
           onChange={(vs) =>
             pushImmediate({
               site: vs[0] ?? null,
-              filterQuery: null, filterQueryMode: null,
-              filterPage: null, filterPageMode: null,
+              filterQuery: null, filterQueryExclude: null,
+              filterPage: null, filterPageExclude: null,
             })
           }
           placeholder="Select a site…"
@@ -97,16 +97,16 @@ export function GscControls({
         <Combobox
           label="Landing Page contains (substring)"
           values={localPages}
-          mode={localPagesMode}
+          excludeValues={localPagesExc}
           options={pageOptions}
           multi
           substringMode
-          onChange={(vs, mode) => {
+          onChange={(vs, exc) => {
             setLocalPages(vs);
-            setLocalPagesMode(mode);
+            setLocalPagesExc(exc);
             pushDebounced({
               filterPage: vs.length ? vs.join(",") : null,
-              filterPageMode: mode === "exclude" ? "exclude" : null,
+              filterPageExclude: exc.length ? exc.join(",") : null,
             });
           }}
           placeholder="All pages"
@@ -114,16 +114,16 @@ export function GscControls({
         <Combobox
           label="Query contains (substring)"
           values={localQueries}
-          mode={localQueriesMode}
+          excludeValues={localQueriesExc}
           options={queryOptions}
           multi
           substringMode
-          onChange={(vs, mode) => {
+          onChange={(vs, exc) => {
             setLocalQueries(vs);
-            setLocalQueriesMode(mode);
+            setLocalQueriesExc(exc);
             pushDebounced({
               filterQuery: vs.length ? vs.join(",") : null,
-              filterQueryMode: mode === "exclude" ? "exclude" : null,
+              filterQueryExclude: exc.length ? exc.join(",") : null,
             });
           }}
           placeholder="All queries"
@@ -131,16 +131,14 @@ export function GscControls({
       </div>
 
       <div className="flex flex-wrap items-end gap-3 border-t border-gray-100 pt-3">
-        <div className="inline-flex rounded-md border border-gray-300 overflow-hidden">
+        <div className="inline-flex border border-gray-300 overflow-hidden">
           {PRESET_DAYS.map((p) => {
             const active = !usingCustom && currentDays === p.value;
             return (
               <button
                 key={p.value}
                 onClick={() => pushImmediate({ days: String(p.value), start: null, end: null })}
-                className={`px-3 py-1.5 text-sm transition-colors ${
-                  active ? "bg-black text-white" : "bg-white text-gray-700 hover:bg-gray-50"
-                }`}
+                className={`px-3 py-1.5 text-sm transition-colors ${active ? "bg-black text-white" : "bg-white text-gray-700 hover:bg-gray-50"}`}
               >
                 {p.label}
               </button>
@@ -150,23 +148,23 @@ export function GscControls({
 
         <div className="flex items-end gap-2">
           <label className="flex flex-col">
-            <span className="text-[10px] uppercase tracking-wide text-gray-500 mb-1">Custom start</span>
+            <span className="text-[10px] uppercase tracking-wide text-gray-500 mb-1 not-italic">Custom start</span>
             <input
               type="date"
               value={currentStart}
               max={currentEnd}
               onChange={(e) => pushImmediate({ start: e.target.value, end: currentEnd, days: null })}
-              className="rounded-md border border-gray-300 bg-white px-2 py-1.5 text-sm"
+              className="border border-gray-300 bg-white px-2 py-1.5 text-sm"
             />
           </label>
           <label className="flex flex-col">
-            <span className="text-[10px] uppercase tracking-wide text-gray-500 mb-1">Custom end</span>
+            <span className="text-[10px] uppercase tracking-wide text-gray-500 mb-1 not-italic">Custom end</span>
             <input
               type="date"
               value={currentEnd}
               min={currentStart}
               onChange={(e) => pushImmediate({ start: currentStart, end: e.target.value, days: null })}
-              className="rounded-md border border-gray-300 bg-white px-2 py-1.5 text-sm"
+              className="border border-gray-300 bg-white px-2 py-1.5 text-sm"
             />
           </label>
         </div>
