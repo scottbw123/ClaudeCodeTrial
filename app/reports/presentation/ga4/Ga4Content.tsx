@@ -114,9 +114,9 @@ export async function Ga4Content({ searchParams: sp, gscHref, ga4Href }: Props) 
     filters.push({ fieldName: "sessionDefaultChannelGroup", values: channels });
   }
   if (pageUrls.length === 1) {
-    filters.push({ fieldName: "pagePath", matchType: "CONTAINS", value: pageUrls[0] });
+    filters.push({ fieldName: "pageLocation", matchType: "CONTAINS", value: pageUrls[0] });
   } else if (pageUrls.length > 1) {
-    filters.push({ fieldName: "pagePath", values: pageUrls });
+    filters.push({ fieldName: "pageLocation", values: pageUrls });
   }
   if (eventNames.length === 1) {
     filters.push({ fieldName: "eventName", value: eventNames[0] });
@@ -190,7 +190,7 @@ export async function Ga4Content({ searchParams: sp, gscHref, ga4Href }: Props) 
           propertyId,
           startDate: range.startDate,
           endDate: range.endDate,
-          dimensions: ["pagePath"],
+          dimensions: ["pageLocation"],
           metrics: ["screenPageViews", "activeUsers", "sessions", "eventCount", "keyEvents"],
           limit: 50,
           orderByMetric: { name: "screenPageViews" },
@@ -209,7 +209,7 @@ export async function Ga4Content({ searchParams: sp, gscHref, ga4Href }: Props) 
           propertyId,
           startDate: range.startDate,
           endDate: range.endDate,
-          dimensions: ["pagePath"],
+          dimensions: ["pageLocation"],
           metrics: ["screenPageViews"],
           limit: 50000,
           orderByMetric: { name: "screenPageViews" },

@@ -109,6 +109,27 @@ export function Combobox({ label, values, options, onChange, multi = false, plac
               placeholder={`Search ${options.length.toLocaleString()} options…`}
               className="w-full outline-none text-sm px-2 py-1 rounded border border-gray-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
             />
+            {multi && filtered.length > 0 && (
+              <div className="flex gap-3 mt-1.5 text-xs">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const merged = Array.from(new Set([...values, ...filtered]));
+                    onChange(merged);
+                  }}
+                  className="text-blue-600 hover:underline font-medium"
+                >
+                  Select all {filtered.length.toLocaleString()} matching
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onChange(values.filter((v) => !filtered.includes(v)))}
+                  className="text-gray-600 hover:underline"
+                >
+                  Deselect all matching
+                </button>
+              </div>
+            )}
           </div>
           <div className="max-h-[480px] overflow-y-auto">
             {filtered.length === 0 ? (

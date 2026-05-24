@@ -1,9 +1,10 @@
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
-import { useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import type { Ga4Property } from "@/lib/ga4";
 import { Combobox } from "../components/Combobox";
+import { RefreshButton } from "../components/RefreshButton";
 
 const PRESET_DAYS = [
   { label: "Last 30d", value: 30 },
@@ -11,6 +12,8 @@ const PRESET_DAYS = [
   { label: "Last 180d", value: 180 },
   { label: "Last 1y", value: 365 },
 ];
+
+const DEBOUNCE_MS = 500;
 
 export function Ga4Controls({
   properties,
@@ -43,13 +46,34 @@ export function Ga4Controls({
   const searchParams = useSearchParams();
   const [pending, startTransition] = useTransition();
 
-  function update(updates: Record<string, string | null>) {
+  const [localChannels, setLocalChannels] = useState(currentChannels);
+  const [localPageUrls, setLocalPageUrls] = useState(currentPageUrls);
+  const [localEventNames, setLocalEventNames] = useState(currentEventNames);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => setLocalChannels(currentChannels), [currentChannels.join(",")]);
+  useEffect(() => setLocalPageUrls(currentPageUrls), [currentPageUrls.join(",")]);
+  useEffect(() => setLocalEventNames(currentEventNames), [currentEventNames.join(",")]);
+
+  function buildSp(updates: Record<string, string | null>) {
     const sp = new URLSearchParams(searchParams.toString());
     for (const [k, v] of Object.entries(updates)) {
       if (v === null || v === "") sp.delete(k);
       else sp.set(k, v);
     }
-    startTransition(() => router.push(`?${sp.toString()}`));
+    return sp;
+  }
+
+  function pushImmediate(updates: Record<string, string | null>) {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    startTransition(() => router.push(`?${buildSp(updates).toString()}`));
+  }
+
+  function pushDebounced(updates: Record<string, string | null>) {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      startTransition(() => router.push(`?${buildSp(updates).toString()}`));
+    }, DEBOUNCE_MS);
   }
 
   const usingCustom = Boolean(searchParams.get("start") && searchParams.get("end"));
@@ -64,7 +88,7 @@ export function Ga4Controls({
           onChange={(vs) => {
             const label = vs[0];
             const match = properties.find((p) => `${p.accountName} — ${p.propertyName}` === label);
-            update({
+            pushImmediate({
               propertyId: match?.propertyId ?? null,
               channel: null,
               pageUrl: null,
@@ -76,26 +100,35 @@ export function Ga4Controls({
         />
         <Combobox
           label="Channel (multi-select)"
-          values={currentChannels}
+          values={localChannels}
           options={channelOptions}
           multi
-          onChange={(vs) => update({ channel: vs.length ? vs.join(",") : null })}
+          onChange={(vs) => {
+            setLocalChannels(vs);
+            pushDebounced({ channel: vs.length ? vs.join(",") : null });
+          }}
           placeholder="All channels"
         />
         <Combobox
-          label="Page URL contains (multi-select)"
-          values={currentPageUrls}
+          label="Full page URL contains (multi-select)"
+          values={localPageUrls}
           options={pageOptions}
           multi
-          onChange={(vs) => update({ pageUrl: vs.length ? vs.join(",") : null })}
+          onChange={(vs) => {
+            setLocalPageUrls(vs);
+            pushDebounced({ pageUrl: vs.length ? vs.join(",") : null });
+          }}
           placeholder="All pages"
         />
         <Combobox
           label="Event name (multi-select)"
-          values={currentEventNames}
+          values={localEventNames}
           options={eventOptions}
           multi
-          onChange={(vs) => update({ eventName: vs.length ? vs.join(",") : null })}
+          onChange={(vs) => {
+            setLocalEventNames(vs);
+            pushDebounced({ eventName: vs.length ? vs.join(",") : null });
+          }}
           placeholder="All events"
         />
         <label className="flex flex-col">
@@ -103,7 +136,7 @@ export function Ga4Controls({
           <select
             className="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
             value={currentKeyEvent}
-            onChange={(e) => update({ keyEvent: e.target.value || null })}
+            onChange={(e) => pushImmediate({ keyEvent: e.target.value || null })}
           >
             <option value="">Any</option>
             <option value="true">Key events only</option>
@@ -119,7 +152,7 @@ export function Ga4Controls({
             return (
               <button
                 key={p.value}
-                onClick={() => update({ days: String(p.value), start: null, end: null })}
+                onClick={() => pushImmediate({ days: String(p.value), start: null, end: null })}
                 className={`px-3 py-1.5 text-sm transition-colors ${
                   active ? "bg-black text-white" : "bg-white text-gray-700 hover:bg-gray-50"
                 }`}
@@ -137,7 +170,7 @@ export function Ga4Controls({
               type="date"
               value={currentStart}
               max={currentEnd}
-              onChange={(e) => update({ start: e.target.value, end: currentEnd, days: null })}
+              onChange={(e) => pushImmediate({ start: e.target.value, end: currentEnd, days: null })}
               className="rounded-md border border-gray-300 bg-white px-2 py-1.5 text-sm"
             />
           </label>
@@ -147,13 +180,16 @@ export function Ga4Controls({
               type="date"
               value={currentEnd}
               min={currentStart}
-              onChange={(e) => update({ start: currentStart, end: e.target.value, days: null })}
+              onChange={(e) => pushImmediate({ start: currentStart, end: e.target.value, days: null })}
               className="rounded-md border border-gray-300 bg-white px-2 py-1.5 text-sm"
             />
           </label>
         </div>
 
-        {pending && <span className="text-xs text-gray-400">Refreshing…</span>}
+        <div className="ml-auto flex items-center gap-3">
+          {pending && <span className="text-xs text-gray-400">Refreshing…</span>}
+          <RefreshButton />
+        </div>
       </div>
     </section>
   );

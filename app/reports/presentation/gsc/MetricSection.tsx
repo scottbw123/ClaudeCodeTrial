@@ -91,7 +91,7 @@ export function MetricSection({ data }: { data: MetricSectionData }) {
         {data.callouts.map((c) => {
           const arrow = c.changePercent > 0 ? "▲" : c.changePercent < 0 ? "▼" : "·";
           return (
-            <div key={c.label} className="bg-gray-50 border border-gray-200 rounded-md p-3">
+            <div key={c.label} className="bg-white border border-gray-200 rounded-md p-3">
               <p className="text-xs text-gray-500">{c.label}</p>
               <p className="text-2xl font-semibold text-gray-900 tabular-nums">
                 {format(c.total, data.format)}
