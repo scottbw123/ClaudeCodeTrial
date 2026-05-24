@@ -1,5 +1,5 @@
-import { queryGsc, listSites, escapeRegex, type GscFilter } from "@/lib/gsc";
-import { listProperties, runReport, type Ga4Filter } from "@/lib/ga4";
+import { queryGscMultiSiteRaw, listSites, escapeRegex, type GscFilter } from "@/lib/gsc";
+import { listProperties, runReportMultiProperty, type Ga4Filter } from "@/lib/ga4";
 import { previousPeriod, rangeFromDays, daysBetween } from "@/lib/date-utils";
 import { AI_SOURCES } from "@/lib/ai-sources";
 import { PresentationHeader } from "../components/Header";
@@ -45,10 +45,11 @@ function formatGa4Date(yyyymmdd: string): string {
 interface DailyRow { date: string; values: number[] }
 
 async function gscDailySeries(
-  siteUrl: string, startDate: string, endDate: string, extraFilters: GscFilter[]
+  siteUrls: string[], startDate: string, endDate: string, extraFilters: GscFilter[]
 ): Promise<DailyRow[]> {
-  const rows = await queryGsc({
-    siteUrl, startDate, endDate, dimensions: ["date"], rowLimit: 1000, filters: extraFilters,
+  if (siteUrls.length === 0) return [];
+  const rows = await queryGscMultiSiteRaw({
+    siteUrls, startDate, endDate, dimensions: ["date"], rowLimit: 1000, filters: extraFilters,
   });
   return rows
     .map((r) => ({ date: r.keys[0] ?? "", values: [r.impressions, r.clicks, r.ctr, r.position] }))
@@ -56,10 +57,11 @@ async function gscDailySeries(
 }
 
 async function ga4DailySeries(
-  propertyId: string, startDate: string, endDate: string, metric: string, filters: Ga4Filter[]
+  propertyIds: string[], startDate: string, endDate: string, metric: string, filters: Ga4Filter[]
 ): Promise<DailyRow[]> {
-  const r = await runReport({
-    propertyId, startDate, endDate, dimensions: ["date"], metrics: [metric], limit: 500, filters,
+  if (propertyIds.length === 0) return [];
+  const r = await runReportMultiProperty({
+    propertyIds, startDate, endDate, dimensions: ["date"], metrics: [metric], limit: 500, filters,
   });
   return r.rows
     .map((row) => ({ date: formatGa4Date(row.dimensionValues[0] ?? ""), values: [Number(row.metricValues[0] ?? 0)] }))
@@ -93,8 +95,8 @@ function spark(daily: DailyRow[], idx: number): Sparkpoint[] {
 
 export async function OverviewContent({ searchParams: sp, overviewHref, gscHref, ga4Href, aiHref }: Props) {
   const [sites, properties] = await Promise.all([listSites(), listProperties()]);
-  const siteUrl = sp.site || sites[0]?.siteUrl || "";
-  const propertyId = sp.propertyId || properties[0]?.propertyId || "";
+  const siteUrls = (sp.site || sites[0]?.siteUrl || "").split(",").map((s) => s.trim()).filter(Boolean);
+  const propertyIds = (sp.propertyId || properties[0]?.propertyId || "").split(",").map((s) => s.trim()).filter(Boolean);
 
   const hasCustom = Boolean(sp.start && sp.end);
   const days = Number(sp.days || 30);
@@ -124,6 +126,9 @@ export async function OverviewContent({ searchParams: sp, overviewHref, gscHref,
     ? [{ fieldName: "eventName", values: conversionEvents }]
     : [];
 
+  // AI Referral Conversions = events from AI sources (via referral medium) filtered to selected events
+  const aiEventFilter: Ga4Filter[] = [...aiAllFilter, ...eventFilter];
+
   // Get event options for the filter dropdown
   let eventOptions: string[] = [];
 
@@ -137,11 +142,12 @@ export async function OverviewContent({ searchParams: sp, overviewHref, gscHref,
   let directDaily: DailyRow[] = [], directPrevDaily: DailyRow[] = [];
   let eventsDaily: DailyRow[] = [], eventsPrevDaily: DailyRow[] = [];
   let usersDaily: DailyRow[] = [], usersPrevDaily: DailyRow[] = [];
+  let aiEventsDaily: DailyRow[] = [], aiEventsPrevDaily: DailyRow[] = [];
 
-  if (siteUrl && propertyId) {
+  if (siteUrls.length > 0 && propertyIds.length > 0) {
     try {
-      const eventOptsResult = await runReport({
-        propertyId, startDate: range.startDate, endDate: range.endDate,
+      const eventOptsResult = await runReportMultiProperty({
+        propertyIds, startDate: range.startDate, endDate: range.endDate,
         dimensions: ["eventName"], metrics: ["eventCount"], limit: 500,
         orderByMetric: { name: "eventCount" },
       });
@@ -157,25 +163,28 @@ export async function OverviewContent({ searchParams: sp, overviewHref, gscHref,
         directDaily, directPrevDaily,
         eventsDaily, eventsPrevDaily,
         usersDaily, usersPrevDaily,
+        aiEventsDaily, aiEventsPrevDaily,
       ] = await Promise.all([
-        gscDailySeries(siteUrl, range.startDate, range.endDate, []),
-        gscDailySeries(siteUrl, compareRange.startDate, compareRange.endDate, []),
-        gscDailySeries(siteUrl, range.startDate, range.endDate, brandedFilter),
-        gscDailySeries(siteUrl, compareRange.startDate, compareRange.endDate, brandedFilter),
-        gscDailySeries(siteUrl, range.startDate, range.endDate, nonBrandedFilter),
-        gscDailySeries(siteUrl, compareRange.startDate, compareRange.endDate, nonBrandedFilter),
-        ga4DailySeries(propertyId, range.startDate, range.endDate, "bounceRate", organicFilter),
-        ga4DailySeries(propertyId, compareRange.startDate, compareRange.endDate, "bounceRate", organicFilter),
-        ga4DailySeries(propertyId, range.startDate, range.endDate, "averageSessionDuration", organicFilter),
-        ga4DailySeries(propertyId, compareRange.startDate, compareRange.endDate, "averageSessionDuration", organicFilter),
-        ga4DailySeries(propertyId, range.startDate, range.endDate, "sessions", aiAllFilter),
-        ga4DailySeries(propertyId, compareRange.startDate, compareRange.endDate, "sessions", aiAllFilter),
-        ga4DailySeries(propertyId, range.startDate, range.endDate, "sessions", directFilter),
-        ga4DailySeries(propertyId, compareRange.startDate, compareRange.endDate, "sessions", directFilter),
-        ga4DailySeries(propertyId, range.startDate, range.endDate, "eventCount", eventFilter),
-        ga4DailySeries(propertyId, compareRange.startDate, compareRange.endDate, "eventCount", eventFilter),
-        ga4DailySeries(propertyId, range.startDate, range.endDate, "activeUsers", []),
-        ga4DailySeries(propertyId, compareRange.startDate, compareRange.endDate, "activeUsers", []),
+        gscDailySeries(siteUrls, range.startDate, range.endDate, []),
+        gscDailySeries(siteUrls, compareRange.startDate, compareRange.endDate, []),
+        gscDailySeries(siteUrls, range.startDate, range.endDate, brandedFilter),
+        gscDailySeries(siteUrls, compareRange.startDate, compareRange.endDate, brandedFilter),
+        gscDailySeries(siteUrls, range.startDate, range.endDate, nonBrandedFilter),
+        gscDailySeries(siteUrls, compareRange.startDate, compareRange.endDate, nonBrandedFilter),
+        ga4DailySeries(propertyIds, range.startDate, range.endDate, "bounceRate", organicFilter),
+        ga4DailySeries(propertyIds, compareRange.startDate, compareRange.endDate, "bounceRate", organicFilter),
+        ga4DailySeries(propertyIds, range.startDate, range.endDate, "averageSessionDuration", organicFilter),
+        ga4DailySeries(propertyIds, compareRange.startDate, compareRange.endDate, "averageSessionDuration", organicFilter),
+        ga4DailySeries(propertyIds, range.startDate, range.endDate, "sessions", aiAllFilter),
+        ga4DailySeries(propertyIds, compareRange.startDate, compareRange.endDate, "sessions", aiAllFilter),
+        ga4DailySeries(propertyIds, range.startDate, range.endDate, "sessions", directFilter),
+        ga4DailySeries(propertyIds, compareRange.startDate, compareRange.endDate, "sessions", directFilter),
+        ga4DailySeries(propertyIds, range.startDate, range.endDate, "eventCount", eventFilter),
+        ga4DailySeries(propertyIds, compareRange.startDate, compareRange.endDate, "eventCount", eventFilter),
+        ga4DailySeries(propertyIds, range.startDate, range.endDate, "activeUsers", []),
+        ga4DailySeries(propertyIds, compareRange.startDate, compareRange.endDate, "activeUsers", []),
+        ga4DailySeries(propertyIds, range.startDate, range.endDate, "eventCount", aiEventFilter),
+        ga4DailySeries(propertyIds, compareRange.startDate, compareRange.endDate, "eventCount", aiEventFilter),
       ]);
     } catch (err) {
       fetchError = err instanceof Error ? err.message : String(err);
@@ -223,6 +232,8 @@ export async function OverviewContent({ searchParams: sp, overviewHref, gscHref,
   const directTotalPrev = sumIndex(directPrevDaily, 0);
   const eventsTotal = sumIndex(eventsDaily, 0);
   const eventsTotalPrev = sumIndex(eventsPrevDaily, 0);
+  const aiEventsTotal = sumIndex(aiEventsDaily, 0);
+  const aiEventsTotalPrev = sumIndex(aiEventsPrevDaily, 0);
   const usersTotal = sumIndex(usersDaily, 0);
   const usersTotalPrev = sumIndex(usersPrevDaily, 0);
   const conversionRate = ratio(eventsTotal, usersTotal);
@@ -256,8 +267,10 @@ export async function OverviewContent({ searchParams: sp, overviewHref, gscHref,
     { label: "CTR (Non-Branded)", source: "GSC" as const, value: formatPct(nbCtr), changePercent: pct(nbCtr, nbCtrPrev), data: spark(gNonBranded, 2) },
   ];
 
+  const eventLabel = conversionEvents.length > 0 ? `${conversionEvents.length} selected` : "all";
   const layer3Cards = [
-    { label: `Organic Conversions (Events: ${conversionEvents.length > 0 ? `${conversionEvents.length} selected` : "all"})`, source: "GA4" as const, value: formatBig(eventsTotal), changePercent: pct(eventsTotal, eventsTotalPrev), data: spark(eventsDaily, 0) },
+    { label: `Organic Conversions (Events: ${eventLabel})`, source: "GA4" as const, value: formatBig(eventsTotal), changePercent: pct(eventsTotal, eventsTotalPrev), data: spark(eventsDaily, 0) },
+    { label: `AI Referral Conversions (Events: ${eventLabel})`, source: "GA4" as const, value: formatBig(aiEventsTotal), changePercent: pct(aiEventsTotal, aiEventsTotalPrev), data: spark(aiEventsDaily, 0) },
     { label: "Conversion Rate (Events / Users)", source: "GA4" as const, value: formatPct(conversionRate, 2), changePercent: pct(conversionRate, conversionRatePrev), data: spark(eventsDaily, 0) },
   ];
 
@@ -277,8 +290,8 @@ export async function OverviewContent({ searchParams: sp, overviewHref, gscHref,
       <OverviewControls
         sites={sites}
         properties={properties}
-        currentSite={siteUrl}
-        currentProperty={propertyId}
+        currentSites={siteUrls}
+        currentProperties={propertyIds}
         currentDays={computedDays}
         currentStart={range.startDate}
         currentEnd={range.endDate}

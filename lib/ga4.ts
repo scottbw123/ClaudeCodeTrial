@@ -73,6 +73,61 @@ function buildDimensionFilter(filters: Ga4Filter[]) {
   };
 }
 
+/**
+ * Fan out a report across multiple properties and merge rows by dimension key.
+ * Metrics are summed naively — accurate for counts (sessions, users, events),
+ * approximate for rate metrics (bounce rate, etc.) when more than one property
+ * is selected. For single-property selection this behaves identically to runReport.
+ */
+export async function runReportMultiProperty(opts: {
+  propertyIds: string[];
+  startDate: string;
+  endDate: string;
+  dimensions: string[];
+  metrics: string[];
+  limit?: number;
+  orderByMetric?: { name: string; desc?: boolean };
+  filters?: Ga4Filter[];
+}): Promise<Ga4ReportResult> {
+  if (opts.propertyIds.length === 0) return { rows: [], totals: [] };
+  const { propertyIds, ...rest } = opts;
+  if (propertyIds.length === 1) {
+    return runReport({ propertyId: propertyIds[0], ...rest });
+  }
+  const results = await Promise.all(
+    propertyIds.map((propertyId) => runReport({ propertyId, ...rest }))
+  );
+  const grouped = new Map<string, Ga4Row>();
+  for (const r of results) {
+    for (const row of r.rows) {
+      const key = row.dimensionValues.join("\x00");
+      const existing = grouped.get(key);
+      if (!existing) {
+        grouped.set(key, {
+          dimensionValues: [...row.dimensionValues],
+          metricValues: [...row.metricValues],
+        });
+      } else {
+        for (let i = 0; i < row.metricValues.length; i++) {
+          existing.metricValues[i] = String(
+            Number(existing.metricValues[i] ?? 0) + Number(row.metricValues[i] ?? 0)
+          );
+        }
+      }
+    }
+  }
+  const merged = Array.from(grouped.values()).sort(
+    (a, b) => Number(b.metricValues[0] ?? 0) - Number(a.metricValues[0] ?? 0)
+  );
+  const totals: string[] = [];
+  for (const r of results) {
+    for (let i = 0; i < r.totals.length; i++) {
+      totals[i] = String(Number(totals[i] ?? 0) + Number(r.totals[i] ?? 0));
+    }
+  }
+  return { rows: merged, totals };
+}
+
 export async function runReport(opts: {
   propertyId: string;
   startDate: string;

@@ -19,8 +19,8 @@ const DEBOUNCE_MS = 500;
 export function OverviewControls({
   sites,
   properties,
-  currentSite,
-  currentProperty,
+  currentSites,
+  currentProperties,
   currentDays,
   currentStart,
   currentEnd,
@@ -30,8 +30,8 @@ export function OverviewControls({
 }: {
   sites: GscSite[];
   properties: Ga4Property[];
-  currentSite: string;
-  currentProperty: string;
+  currentSites: string[];
+  currentProperties: string[];
   currentDays: number;
   currentStart: string;
   currentEnd: string;
@@ -97,22 +97,25 @@ export function OverviewControls({
     <section className="max-w-[1400px] mx-auto px-6 pt-6">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
         <Combobox
-          label="Site"
-          values={currentSite ? [currentSite] : []}
+          label="Sites (multi-select)"
+          values={currentSites}
           options={sites.map((s) => s.siteUrl)}
-          onChange={(vs) => pushImmediate({ site: vs[0] ?? null })}
-          placeholder="Select a site…"
+          multi
+          onChange={(vs) => pushImmediate({ site: vs.length ? vs.join(",") : null })}
+          placeholder="Select sites…"
         />
         <Combobox
-          label="GA4 property"
-          values={currentProperty ? [propertyLabel(currentProperty)] : []}
+          label="GA4 properties (multi-select)"
+          values={currentProperties.map(propertyLabel)}
           options={properties.map((p) => `${p.accountName} — ${p.propertyName}`)}
+          multi
           onChange={(vs) => {
-            const label = vs[0];
-            const match = properties.find((p) => `${p.accountName} — ${p.propertyName}` === label);
-            pushImmediate({ propertyId: match?.propertyId ?? null });
+            const ids = vs
+              .map((label) => properties.find((p) => `${p.accountName} — ${p.propertyName}` === label)?.propertyId)
+              .filter(Boolean) as string[];
+            pushImmediate({ propertyId: ids.length ? ids.join(",") : null });
           }}
-          placeholder="Select a property…"
+          placeholder="Select properties…"
         />
       </div>
 

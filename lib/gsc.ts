@@ -155,6 +155,74 @@ function buildExcludeFilters(dimension: GscDimension, values: string[]): GscFilt
   return out;
 }
 
+/**
+ * Fan out a query (with raw filters) across multiple sites and merge.
+ */
+export async function queryGscMultiSiteRaw(opts: {
+  siteUrls: string[];
+  startDate: string;
+  endDate: string;
+  dimensions: GscDimension[];
+  rowLimit?: number;
+  filters?: GscFilter[];
+}): Promise<GscRow[]> {
+  if (opts.siteUrls.length === 0) return [];
+  const { siteUrls, ...rest } = opts;
+  if (siteUrls.length === 1) {
+    return queryGsc({ siteUrl: siteUrls[0], ...rest });
+  }
+  const results = await Promise.all(
+    siteUrls.map((siteUrl) => queryGsc({ siteUrl, ...rest }))
+  );
+  return mergeRows(results.flat());
+}
+
+/**
+ * Fan out a filtered query across multiple sites and merge the rows. Metrics
+ * are summed and position is impression-weighted via mergeRows.
+ */
+export async function queryGscMultiSite(opts: {
+  siteUrls: string[];
+  startDate: string;
+  endDate: string;
+  dimensions: GscDimension[];
+  rowLimit?: number;
+  filterQueries?: string[];
+  filterQueriesExclude?: string[];
+  filterPages?: string[];
+  filterPagesExclude?: string[];
+}): Promise<GscRow[]> {
+  if (opts.siteUrls.length === 0) return [];
+  const { siteUrls, ...rest } = opts;
+  if (siteUrls.length === 1) {
+    return queryGscFiltered({ siteUrl: siteUrls[0], ...rest });
+  }
+  const results = await Promise.all(
+    siteUrls.map((siteUrl) => queryGscFiltered({ siteUrl, ...rest }))
+  );
+  return mergeRows(results.flat());
+}
+
+export async function queryGscPaginatedMultiSite(
+  opts: {
+    siteUrls: string[];
+    startDate: string;
+    endDate: string;
+    dimensions: GscDimension[];
+  },
+  maxRows: number
+): Promise<GscRow[]> {
+  if (opts.siteUrls.length === 0) return [];
+  const { siteUrls, ...rest } = opts;
+  if (siteUrls.length === 1) {
+    return queryGscPaginated({ siteUrl: siteUrls[0], ...rest }, maxRows);
+  }
+  const results = await Promise.all(
+    siteUrls.map((siteUrl) => queryGscPaginated({ siteUrl, ...rest }, maxRows))
+  );
+  return mergeRows(results.flat());
+}
+
 export async function queryGscFiltered(opts: {
   siteUrl: string;
   startDate: string;

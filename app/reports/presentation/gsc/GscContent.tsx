@@ -86,7 +86,8 @@ function buildDeltaRows(current: GscRow[], previous: GscRow[]): DeltaRow[] {
 export async function GscContent({ searchParams: sp, overviewHref, gscHref, ga4Href, aiHref }: Props) {
   const sites = await listSites();
 
-  const siteUrl = sp.site || sites[0]?.siteUrl || "";
+  // Tolerate comma-separated URLs from Overview's multi-site picker (use first for now).
+  const siteUrl = ((sp.site || sites[0]?.siteUrl || "").split(",")[0] || "").trim();
   const splitCsv = (s: string | undefined) => (s || "").split(",").map((x) => x.trim()).filter(Boolean);
   const filterQueries = splitCsv(sp.filterQuery);
   const filterQueriesExclude = splitCsv(sp.filterQueryExclude);

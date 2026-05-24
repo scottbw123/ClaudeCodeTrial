@@ -109,7 +109,8 @@ async function fetchSiteMetrics(propertyId: string, startDate: string, endDate: 
 
 export async function AiContent({ searchParams: sp, overviewHref, gscHref, ga4Href, aiHref }: Props) {
   const properties = await listProperties();
-  const propertyId = sp.propertyId || properties[0]?.propertyId || "";
+  // Tolerate comma-separated propertyId from Overview's multi-property picker.
+  const propertyId = ((sp.propertyId || properties[0]?.propertyId || "").split(",")[0] || "").trim();
 
   const hasCustom = Boolean(sp.start && sp.end);
   const days = Number(sp.days || 30);
