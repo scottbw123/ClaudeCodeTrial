@@ -1,4 +1,4 @@
-import { queryGsc, queryGscPaginated, queryGscFiltered, listSites, mergePageRowsByNormalizedUrl, type GscRow } from "@/lib/gsc";
+import { queryGscPaginatedMultiSite, queryGscMultiSite, listSites, mergePageRowsByNormalizedUrl, type GscRow } from "@/lib/gsc";
 import { previousPeriod, rangeFromDays, daysBetween } from "@/lib/date-utils";
 import { PresentationHeader } from "../components/Header";
 import { PresentationFooter } from "../components/Footer";
@@ -39,8 +39,8 @@ function formatBig(n: number): string {
   return new Intl.NumberFormat("en-US").format(Math.round(n));
 }
 
-async function fetchPeriod(siteUrl: string, startDate: string, endDate: string, fq: string[], fqe: string[], fp: string[], fpe: string[]): Promise<GscRow[]> {
-  return queryGscFiltered({ siteUrl, startDate, endDate, dimensions: ["date"], rowLimit: 1000, filterQueries: fq, filterQueriesExclude: fqe, filterPages: fp, filterPagesExclude: fpe });
+async function fetchPeriod(siteUrls: string[], startDate: string, endDate: string, fq: string[], fqe: string[], fp: string[], fpe: string[]): Promise<GscRow[]> {
+  return queryGscMultiSite({ siteUrls, startDate, endDate, dimensions: ["date"], rowLimit: 1000, filterQueries: fq, filterQueriesExclude: fqe, filterPages: fp, filterPagesExclude: fpe });
 }
 
 function buildCallouts(
@@ -86,8 +86,7 @@ function buildDeltaRows(current: GscRow[], previous: GscRow[]): DeltaRow[] {
 export async function GscContent({ searchParams: sp, overviewHref, gscHref, ga4Href, aiHref }: Props) {
   const sites = await listSites();
 
-  // Tolerate comma-separated URLs from Overview's multi-site picker (use first for now).
-  const siteUrl = ((sp.site || sites[0]?.siteUrl || "").split(",")[0] || "").trim();
+  const siteUrls = (sp.site || sites[0]?.siteUrl || "").split(",").map((s) => s.trim()).filter(Boolean);
   const splitCsv = (s: string | undefined) => (s || "").split(",").map((x) => x.trim()).filter(Boolean);
   const filterQueries = splitCsv(sp.filterQuery);
   const filterQueriesExclude = splitCsv(sp.filterQueryExclude);
@@ -123,7 +122,7 @@ export async function GscContent({ searchParams: sp, overviewHref, gscHref, ga4H
   let currentCountries: GscRow[] = [];
   let c30: GscRow[] = [], p30: GscRow[] = [], c90: GscRow[] = [], p90: GscRow[] = [], c180: GscRow[] = [], p180: GscRow[] = [];
 
-  if (siteUrl) {
+  if (siteUrls.length > 0) {
     try {
       [
         currentSeries,
@@ -139,23 +138,23 @@ export async function GscContent({ searchParams: sp, overviewHref, gscHref, ga4H
         currentCountries,
         c30, p30, c90, p90, c180, p180,
       ] = await Promise.all([
-        fetchPeriod(siteUrl, range.startDate, range.endDate, filterQueries, filterQueriesExclude, filterPages, filterPagesExclude),
-        fetchPeriod(siteUrl, compareRange.startDate, compareRange.endDate, filterQueries, filterQueriesExclude, filterPages, filterPagesExclude),
-        queryGscFiltered({ siteUrl, ...range, dimensions: ["query"], rowLimit: 500, filterQueries, filterQueriesExclude, filterPages, filterPagesExclude }),
-        queryGscFiltered({ siteUrl, ...compareRange, dimensions: ["query"], rowLimit: 500, filterQueries, filterQueriesExclude, filterPages, filterPagesExclude }),
-        queryGscFiltered({ siteUrl, ...range, dimensions: ["page"], rowLimit: 500, filterQueries, filterQueriesExclude, filterPages, filterPagesExclude }),
-        queryGscFiltered({ siteUrl, ...compareRange, dimensions: ["page"], rowLimit: 500, filterQueries, filterQueriesExclude, filterPages, filterPagesExclude }),
-        queryGscPaginated({ siteUrl, ...range, dimensions: ["query"] }, 50000),
-        queryGscPaginated({ siteUrl, ...range, dimensions: ["page"] }, 50000),
-        queryGscFiltered({ siteUrl, ...range, dimensions: ["device"], rowLimit: 10, filterQueries, filterQueriesExclude, filterPages, filterPagesExclude }),
-        queryGscFiltered({ siteUrl, ...compareRange, dimensions: ["device"], rowLimit: 10, filterQueries, filterQueriesExclude, filterPages, filterPagesExclude }),
-        queryGscFiltered({ siteUrl, ...range, dimensions: ["country"], rowLimit: 250, filterQueries, filterQueriesExclude, filterPages, filterPagesExclude }),
-        fetchPeriod(siteUrl, range30.startDate, range30.endDate, filterQueries, filterQueriesExclude, filterPages, filterPagesExclude),
-        fetchPeriod(siteUrl, prev30.startDate, prev30.endDate, filterQueries, filterQueriesExclude, filterPages, filterPagesExclude),
-        fetchPeriod(siteUrl, range90.startDate, range90.endDate, filterQueries, filterQueriesExclude, filterPages, filterPagesExclude),
-        fetchPeriod(siteUrl, prev90.startDate, prev90.endDate, filterQueries, filterQueriesExclude, filterPages, filterPagesExclude),
-        fetchPeriod(siteUrl, range180.startDate, range180.endDate, filterQueries, filterQueriesExclude, filterPages, filterPagesExclude),
-        fetchPeriod(siteUrl, prev180.startDate, prev180.endDate, filterQueries, filterQueriesExclude, filterPages, filterPagesExclude),
+        fetchPeriod(siteUrls, range.startDate, range.endDate, filterQueries, filterQueriesExclude, filterPages, filterPagesExclude),
+        fetchPeriod(siteUrls, compareRange.startDate, compareRange.endDate, filterQueries, filterQueriesExclude, filterPages, filterPagesExclude),
+        queryGscMultiSite({ siteUrls, ...range, dimensions: ["query"], rowLimit: 500, filterQueries, filterQueriesExclude, filterPages, filterPagesExclude }),
+        queryGscMultiSite({ siteUrls, ...compareRange, dimensions: ["query"], rowLimit: 500, filterQueries, filterQueriesExclude, filterPages, filterPagesExclude }),
+        queryGscMultiSite({ siteUrls, ...range, dimensions: ["page"], rowLimit: 500, filterQueries, filterQueriesExclude, filterPages, filterPagesExclude }),
+        queryGscMultiSite({ siteUrls, ...compareRange, dimensions: ["page"], rowLimit: 500, filterQueries, filterQueriesExclude, filterPages, filterPagesExclude }),
+        queryGscPaginatedMultiSite({ siteUrls, ...range, dimensions: ["query"] }, 50000),
+        queryGscPaginatedMultiSite({ siteUrls, ...range, dimensions: ["page"] }, 50000),
+        queryGscMultiSite({ siteUrls, ...range, dimensions: ["device"], rowLimit: 10, filterQueries, filterQueriesExclude, filterPages, filterPagesExclude }),
+        queryGscMultiSite({ siteUrls, ...compareRange, dimensions: ["device"], rowLimit: 10, filterQueries, filterQueriesExclude, filterPages, filterPagesExclude }),
+        queryGscMultiSite({ siteUrls, ...range, dimensions: ["country"], rowLimit: 250, filterQueries, filterQueriesExclude, filterPages, filterPagesExclude }),
+        fetchPeriod(siteUrls, range30.startDate, range30.endDate, filterQueries, filterQueriesExclude, filterPages, filterPagesExclude),
+        fetchPeriod(siteUrls, prev30.startDate, prev30.endDate, filterQueries, filterQueriesExclude, filterPages, filterPagesExclude),
+        fetchPeriod(siteUrls, range90.startDate, range90.endDate, filterQueries, filterQueriesExclude, filterPages, filterPagesExclude),
+        fetchPeriod(siteUrls, prev90.startDate, prev90.endDate, filterQueries, filterQueriesExclude, filterPages, filterPagesExclude),
+        fetchPeriod(siteUrls, range180.startDate, range180.endDate, filterQueries, filterQueriesExclude, filterPages, filterPagesExclude),
+        fetchPeriod(siteUrls, prev180.startDate, prev180.endDate, filterQueries, filterQueriesExclude, filterPages, filterPagesExclude),
       ]);
     } catch (err) {
       fetchError = err instanceof Error ? err.message : String(err);
@@ -300,7 +299,7 @@ export async function GscContent({ searchParams: sp, overviewHref, gscHref, ga4H
 
       <GscControls
         sites={sites}
-        currentSite={siteUrl}
+        currentSites={siteUrls}
         currentDays={computedDays}
         currentStart={range.startDate}
         currentEnd={range.endDate}

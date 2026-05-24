@@ -1,4 +1,4 @@
-import { listProperties, runReport, type Ga4Filter, type Ga4Row } from "@/lib/ga4";
+import { listProperties, runReportMultiProperty, type Ga4Filter, type Ga4Row } from "@/lib/ga4";
 import { normalizePageUrl } from "@/lib/gsc";
 import { previousPeriod, rangeFromDays, daysBetween } from "@/lib/date-utils";
 import { AI_SOURCES } from "@/lib/ai-sources";
@@ -95,9 +95,9 @@ function toMetrics(values: string[]): SiteMetrics {
   };
 }
 
-async function fetchSiteMetrics(propertyId: string, startDate: string, endDate: string, filters: Ga4Filter[]): Promise<SiteMetrics> {
-  const r = await runReport({
-    propertyId,
+async function fetchSiteMetrics(propertyIds: string[], startDate: string, endDate: string, filters: Ga4Filter[]): Promise<SiteMetrics> {
+  const r = await runReportMultiProperty({
+    propertyIds,
     startDate,
     endDate,
     dimensions: [],
@@ -109,8 +109,7 @@ async function fetchSiteMetrics(propertyId: string, startDate: string, endDate: 
 
 export async function AiContent({ searchParams: sp, overviewHref, gscHref, ga4Href, aiHref }: Props) {
   const properties = await listProperties();
-  // Tolerate comma-separated propertyId from Overview's multi-property picker.
-  const propertyId = ((sp.propertyId || properties[0]?.propertyId || "").split(",")[0] || "").trim();
+  const propertyIds = (sp.propertyId || properties[0]?.propertyId || "").split(",").map((s) => s.trim()).filter(Boolean);
 
   const hasCustom = Boolean(sp.start && sp.end);
   const days = Number(sp.days || 30);
@@ -147,7 +146,7 @@ export async function AiContent({ searchParams: sp, overviewHref, gscHref, ga4Hr
   let pageOptions: string[] = [];
   let eventOptions: string[] = [];
 
-  if (propertyId) {
+  if (propertyIds.length > 0) {
     try {
       const [
         sessionsTs,
@@ -167,8 +166,8 @@ export async function AiContent({ searchParams: sp, overviewHref, gscHref, ga4Hr
         pageOpts,
         eventOpts,
       ] = await Promise.all([
-        runReport({
-          propertyId,
+        runReportMultiProperty({
+          propertyIds,
           startDate: range.startDate,
           endDate: range.endDate,
           dimensions: ["date"],
@@ -176,8 +175,8 @@ export async function AiContent({ searchParams: sp, overviewHref, gscHref, ga4Hr
           limit: 500,
           filters: baseFilters,
         }),
-        runReport({
-          propertyId,
+        runReportMultiProperty({
+          propertyIds,
           startDate: compareRange.startDate,
           endDate: compareRange.endDate,
           dimensions: ["date"],
@@ -185,8 +184,8 @@ export async function AiContent({ searchParams: sp, overviewHref, gscHref, ga4Hr
           limit: 500,
           filters: baseFilters,
         }),
-        runReport({
-          propertyId,
+        runReportMultiProperty({
+          propertyIds,
           startDate: range.startDate,
           endDate: range.endDate,
           dimensions: ["sessionSource"],
@@ -195,8 +194,8 @@ export async function AiContent({ searchParams: sp, overviewHref, gscHref, ga4Hr
           orderByMetric: { name: "sessions" },
           filters: baseFilters,
         }),
-        runReport({
-          propertyId,
+        runReportMultiProperty({
+          propertyIds,
           startDate: range.startDate,
           endDate: range.endDate,
           dimensions: ["landingPagePlusQueryString"],
@@ -205,8 +204,8 @@ export async function AiContent({ searchParams: sp, overviewHref, gscHref, ga4Hr
           orderByMetric: { name: "sessions" },
           filters: baseFilters,
         }),
-        runReport({
-          propertyId,
+        runReportMultiProperty({
+          propertyIds,
           startDate: compareRange.startDate,
           endDate: compareRange.endDate,
           dimensions: ["landingPagePlusQueryString"],
@@ -214,8 +213,8 @@ export async function AiContent({ searchParams: sp, overviewHref, gscHref, ga4Hr
           limit: 500,
           filters: baseFilters,
         }),
-        runReport({
-          propertyId,
+        runReportMultiProperty({
+          propertyIds,
           startDate: range.startDate,
           endDate: range.endDate,
           dimensions: ["date", "sessionSource"],
@@ -223,8 +222,8 @@ export async function AiContent({ searchParams: sp, overviewHref, gscHref, ga4Hr
           limit: 5000,
           filters: baseFilters,
         }),
-        runReport({
-          propertyId,
+        runReportMultiProperty({
+          propertyIds,
           startDate: range.startDate,
           endDate: range.endDate,
           dimensions: ["sessionSourceMedium"],
@@ -233,12 +232,12 @@ export async function AiContent({ searchParams: sp, overviewHref, gscHref, ga4Hr
           orderByMetric: { name: "activeUsers" },
           filters: baseFilters,
         }),
-        fetchSiteMetrics(propertyId, range.startDate, range.endDate, baseFilters),
-        fetchSiteMetrics(propertyId, compareRange.startDate, compareRange.endDate, baseFilters),
-        fetchSiteMetrics(propertyId, range.startDate, range.endDate, []),
-        fetchSiteMetrics(propertyId, compareRange.startDate, compareRange.endDate, []),
-        runReport({
-          propertyId,
+        fetchSiteMetrics(propertyIds, range.startDate, range.endDate, baseFilters),
+        fetchSiteMetrics(propertyIds, compareRange.startDate, compareRange.endDate, baseFilters),
+        fetchSiteMetrics(propertyIds, range.startDate, range.endDate, []),
+        fetchSiteMetrics(propertyIds, compareRange.startDate, compareRange.endDate, []),
+        runReportMultiProperty({
+          propertyIds,
           startDate: range.startDate,
           endDate: range.endDate,
           dimensions: ["eventName"],
@@ -247,8 +246,8 @@ export async function AiContent({ searchParams: sp, overviewHref, gscHref, ga4Hr
           orderByMetric: { name: "eventCount" },
           filters: baseFilters,
         }),
-        runReport({
-          propertyId,
+        runReportMultiProperty({
+          propertyIds,
           startDate: compareRange.startDate,
           endDate: compareRange.endDate,
           dimensions: ["eventName"],
@@ -256,8 +255,8 @@ export async function AiContent({ searchParams: sp, overviewHref, gscHref, ga4Hr
           limit: 500,
           filters: baseFilters,
         }),
-        runReport({
-          propertyId,
+        runReportMultiProperty({
+          propertyIds,
           startDate: range.startDate,
           endDate: range.endDate,
           dimensions: ["date", "eventName"],
@@ -265,8 +264,8 @@ export async function AiContent({ searchParams: sp, overviewHref, gscHref, ga4Hr
           limit: 5000,
           filters: baseFilters,
         }),
-        runReport({
-          propertyId,
+        runReportMultiProperty({
+          propertyIds,
           startDate: range.startDate,
           endDate: range.endDate,
           dimensions: ["landingPagePlusQueryString"],
@@ -275,8 +274,8 @@ export async function AiContent({ searchParams: sp, overviewHref, gscHref, ga4Hr
           orderByMetric: { name: "sessions" },
           filters: baseFilters,
         }),
-        runReport({
-          propertyId,
+        runReportMultiProperty({
+          propertyIds,
           startDate: range.startDate,
           endDate: range.endDate,
           dimensions: ["eventName"],
@@ -369,7 +368,7 @@ export async function AiContent({ searchParams: sp, overviewHref, gscHref, ga4Hr
 
       <AiControls
         properties={properties}
-        currentProperty={propertyId}
+        currentProperties={propertyIds}
         currentDays={computedDays}
         currentStart={range.startDate}
         currentEnd={range.endDate}

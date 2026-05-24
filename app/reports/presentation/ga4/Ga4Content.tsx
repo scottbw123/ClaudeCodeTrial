@@ -1,4 +1,4 @@
-import { listProperties, runReport, type Ga4Filter, type Ga4Row } from "@/lib/ga4";
+import { listProperties, runReportMultiProperty, type Ga4Filter, type Ga4Row } from "@/lib/ga4";
 import { normalizePageUrl } from "@/lib/gsc";
 
 function normalizePageRows(rows: Ga4Row[]): Ga4Row[] {
@@ -80,9 +80,9 @@ function toTotals(values: string[]): SummaryTotals {
   };
 }
 
-async function fetchTotals(propertyId: string, startDate: string, endDate: string, filters: Ga4Filter[]) {
-  const r = await runReport({
-    propertyId,
+async function fetchTotals(propertyIds: string[], startDate: string, endDate: string, filters: Ga4Filter[]) {
+  const r = await runReportMultiProperty({
+    propertyIds,
     startDate,
     endDate,
     dimensions: [],
@@ -92,9 +92,9 @@ async function fetchTotals(propertyId: string, startDate: string, endDate: strin
   return toTotals(r.totals);
 }
 
-async function fetchTimeseries(propertyId: string, startDate: string, endDate: string, filters: Ga4Filter[]) {
-  const r = await runReport({
-    propertyId,
+async function fetchTimeseries(propertyIds: string[], startDate: string, endDate: string, filters: Ga4Filter[]) {
+  const r = await runReportMultiProperty({
+    propertyIds,
     startDate,
     endDate,
     dimensions: ["date"],
@@ -121,8 +121,7 @@ function sumMetric(rows: Ga4Row[], idx: number): number {
 export async function Ga4Content({ searchParams: sp, overviewHref, gscHref, ga4Href, aiHref }: Props) {
   const properties = await listProperties();
 
-  // Tolerate comma-separated propertyId from Overview's multi-property picker.
-  const propertyId = ((sp.propertyId || properties[0]?.propertyId || "").split(",")[0] || "").trim();
+  const propertyIds = (sp.propertyId || properties[0]?.propertyId || "").split(",").map((s) => s.trim()).filter(Boolean);
 
   const hasCustom = Boolean(sp.start && sp.end);
   const days = Number(sp.days || 30);
@@ -175,7 +174,7 @@ export async function Ga4Content({ searchParams: sp, overviewHref, gscHref, ga4H
   let t30 = toTotals([]), t30p = toTotals([]), t90 = toTotals([]), t90p = toTotals([]), t180 = toTotals([]), t180p = toTotals([]);
   let s30: Awaited<ReturnType<typeof fetchTimeseries>> = [], s90: Awaited<ReturnType<typeof fetchTimeseries>> = [], s180: Awaited<ReturnType<typeof fetchTimeseries>> = [];
 
-  if (propertyId) {
+  if (propertyIds.length > 0) {
     try {
       [
         currentTotals,
@@ -190,11 +189,11 @@ export async function Ga4Content({ searchParams: sp, overviewHref, gscHref, ga4H
         t30, t30p, t90, t90p, t180, t180p,
         s30, s90, s180,
       ] = await Promise.all([
-        fetchTotals(propertyId, range.startDate, range.endDate, filters),
-        fetchTotals(propertyId, compareRange.startDate, compareRange.endDate, filters),
-        fetchTimeseries(propertyId, range.startDate, range.endDate, filters),
-        runReport({
-          propertyId,
+        fetchTotals(propertyIds, range.startDate, range.endDate, filters),
+        fetchTotals(propertyIds, compareRange.startDate, compareRange.endDate, filters),
+        fetchTimeseries(propertyIds, range.startDate, range.endDate, filters),
+        runReportMultiProperty({
+          propertyIds,
           startDate: range.startDate,
           endDate: range.endDate,
           dimensions: ["sessionDefaultChannelGroup", "sessionSourceMedium"],
@@ -203,8 +202,8 @@ export async function Ga4Content({ searchParams: sp, overviewHref, gscHref, ga4H
           orderByMetric: { name: "sessions" },
           filters,
         }).then((r) => r.rows),
-        runReport({
-          propertyId,
+        runReportMultiProperty({
+          propertyIds,
           startDate: range.startDate,
           endDate: range.endDate,
           dimensions: ["eventName", "isKeyEvent"],
@@ -213,8 +212,8 @@ export async function Ga4Content({ searchParams: sp, overviewHref, gscHref, ga4H
           orderByMetric: { name: "eventCount" },
           filters: eventFiltersForEvents,
         }).then((r) => r.rows),
-        runReport({
-          propertyId,
+        runReportMultiProperty({
+          propertyIds,
           startDate: range.startDate,
           endDate: range.endDate,
           dimensions: ["landingPagePlusQueryString"],
@@ -223,8 +222,8 @@ export async function Ga4Content({ searchParams: sp, overviewHref, gscHref, ga4H
           orderByMetric: { name: "screenPageViews" },
           filters,
         }).then((r) => r.rows),
-        runReport({
-          propertyId,
+        runReportMultiProperty({
+          propertyIds,
           startDate: range.startDate,
           endDate: range.endDate,
           dimensions: ["sessionDefaultChannelGroup"],
@@ -232,8 +231,8 @@ export async function Ga4Content({ searchParams: sp, overviewHref, gscHref, ga4H
           limit: 100,
           orderByMetric: { name: "sessions" },
         }).then((r) => r.rows.map((row) => row.dimensionValues[0]).filter(Boolean)),
-        runReport({
-          propertyId,
+        runReportMultiProperty({
+          propertyIds,
           startDate: range.startDate,
           endDate: range.endDate,
           dimensions: ["landingPagePlusQueryString"],
@@ -241,8 +240,8 @@ export async function Ga4Content({ searchParams: sp, overviewHref, gscHref, ga4H
           limit: 50000,
           orderByMetric: { name: "screenPageViews" },
         }).then((r) => r.rows.map((row) => row.dimensionValues[0]).filter(Boolean)),
-        runReport({
-          propertyId,
+        runReportMultiProperty({
+          propertyIds,
           startDate: range.startDate,
           endDate: range.endDate,
           dimensions: ["eventName"],
@@ -250,15 +249,15 @@ export async function Ga4Content({ searchParams: sp, overviewHref, gscHref, ga4H
           limit: 1000,
           orderByMetric: { name: "eventCount" },
         }).then((r) => r.rows.map((row) => row.dimensionValues[0]).filter(Boolean)),
-        fetchTotals(propertyId, range30.startDate, range30.endDate, filters),
-        fetchTotals(propertyId, prev30.startDate, prev30.endDate, filters),
-        fetchTotals(propertyId, range90.startDate, range90.endDate, filters),
-        fetchTotals(propertyId, prev90.startDate, prev90.endDate, filters),
-        fetchTotals(propertyId, range180.startDate, range180.endDate, filters),
-        fetchTotals(propertyId, prev180.startDate, prev180.endDate, filters),
-        fetchTimeseries(propertyId, range30.startDate, range30.endDate, filters),
-        fetchTimeseries(propertyId, range90.startDate, range90.endDate, filters),
-        fetchTimeseries(propertyId, range180.startDate, range180.endDate, filters),
+        fetchTotals(propertyIds, range30.startDate, range30.endDate, filters),
+        fetchTotals(propertyIds, prev30.startDate, prev30.endDate, filters),
+        fetchTotals(propertyIds, range90.startDate, range90.endDate, filters),
+        fetchTotals(propertyIds, prev90.startDate, prev90.endDate, filters),
+        fetchTotals(propertyIds, range180.startDate, range180.endDate, filters),
+        fetchTotals(propertyIds, prev180.startDate, prev180.endDate, filters),
+        fetchTimeseries(propertyIds, range30.startDate, range30.endDate, filters),
+        fetchTimeseries(propertyIds, range90.startDate, range90.endDate, filters),
+        fetchTimeseries(propertyIds, range180.startDate, range180.endDate, filters),
       ]);
     } catch (err) {
       fetchError = err instanceof Error ? err.message : String(err);
@@ -389,7 +388,7 @@ export async function Ga4Content({ searchParams: sp, overviewHref, gscHref, ga4H
 
       <Ga4Controls
         properties={properties}
-        currentProperty={propertyId}
+        currentProperties={propertyIds}
         currentDays={computedDays}
         currentStart={range.startDate}
         currentEnd={range.endDate}

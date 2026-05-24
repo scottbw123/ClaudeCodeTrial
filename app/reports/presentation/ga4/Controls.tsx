@@ -6,6 +6,7 @@ import type { Ga4Property } from "@/lib/ga4";
 import { Combobox } from "../components/Combobox";
 import { RefreshButton } from "../components/RefreshButton";
 import { SlideToggle } from "../components/SlideToggle";
+import { DateRangePicker } from "../components/DateRangePicker";
 
 const PRESET_DAYS = [
   { label: "Last 30d", value: 30 },
@@ -18,7 +19,7 @@ const DEBOUNCE_MS = 500;
 
 export function Ga4Controls({
   properties,
-  currentProperty,
+  currentProperties,
   currentDays,
   currentStart,
   currentEnd,
@@ -31,7 +32,7 @@ export function Ga4Controls({
   eventOptions,
 }: {
   properties: Ga4Property[];
-  currentProperty: string;
+  currentProperties: string[];
   currentDays: number;
   currentStart: string;
   currentEnd: string;
@@ -79,21 +80,23 @@ export function Ga4Controls({
     <section className="max-w-[1400px] mx-auto px-6 pt-6">
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 mb-3">
         <Combobox
-          label="GA4 property"
-          values={currentProperty ? [propertyLabelById(properties, currentProperty)] : []}
+          label="GA4 properties (multi-select)"
+          values={currentProperties.map((id) => propertyLabelById(properties, id))}
           options={properties.map((p) => `${p.accountName} — ${p.propertyName}`)}
+          multi
           onChange={(vs) => {
-            const label = vs[0];
-            const match = properties.find((p) => `${p.accountName} — ${p.propertyName}` === label);
+            const ids = vs
+              .map((label) => properties.find((p) => `${p.accountName} — ${p.propertyName}` === label)?.propertyId)
+              .filter(Boolean) as string[];
             pushImmediate({
-              propertyId: match?.propertyId ?? null,
+              propertyId: ids.length ? ids.join(",") : null,
               channel: null,
               pageUrl: null,
               keyEvent: null,
               eventName: null,
             });
           }}
-          placeholder="Select a property…"
+          placeholder="Select properties…"
         />
         <Combobox
           label="Channel (multi-select)"
@@ -150,28 +153,11 @@ export function Ga4Controls({
           onChange={(v) => pushImmediate({ days: v, start: null, end: null })}
         />
 
-        <div className="flex items-end gap-2">
-          <label className="flex flex-col">
-            <span className="text-[10px] uppercase tracking-wide text-gray-500 mb-1">Custom start</span>
-            <input
-              type="date"
-              value={currentStart}
-              max={currentEnd}
-              onChange={(e) => pushImmediate({ start: e.target.value, end: currentEnd, days: null })}
-              className="rounded-md border border-gray-300 bg-white px-2 py-1.5 text-sm"
-            />
-          </label>
-          <label className="flex flex-col">
-            <span className="text-[10px] uppercase tracking-wide text-gray-500 mb-1">Custom end</span>
-            <input
-              type="date"
-              value={currentEnd}
-              min={currentStart}
-              onChange={(e) => pushImmediate({ start: currentStart, end: e.target.value, days: null })}
-              className="rounded-md border border-gray-300 bg-white px-2 py-1.5 text-sm"
-            />
-          </label>
-        </div>
+        <DateRangePicker
+          startDate={currentStart}
+          endDate={currentEnd}
+          onApply={(s, e) => pushImmediate({ start: s, end: e, days: null })}
+        />
 
         <div className="ml-auto flex items-center gap-3">
           {pending && <span className="text-xs text-gray-400">Refreshing…</span>}
