@@ -199,7 +199,7 @@ export async function AiContent({ searchParams: sp, overviewHref, gscHref, ga4Hr
           propertyId,
           startDate: range.startDate,
           endDate: range.endDate,
-          dimensions: ["pageLocation"],
+          dimensions: ["landingPagePlusQueryString"],
           metrics: ["sessions", "eventCount"],
           limit: 50,
           orderByMetric: { name: "sessions" },
@@ -209,7 +209,7 @@ export async function AiContent({ searchParams: sp, overviewHref, gscHref, ga4Hr
           propertyId,
           startDate: compareRange.startDate,
           endDate: compareRange.endDate,
-          dimensions: ["pageLocation"],
+          dimensions: ["landingPagePlusQueryString"],
           metrics: ["sessions", "eventCount"],
           limit: 500,
           filters: baseFilters,
@@ -354,7 +354,7 @@ export async function AiContent({ searchParams: sp, overviewHref, gscHref, ga4Hr
   );
 
   return (
-    <main className="bg-white min-h-screen">
+    <>
       <PresentationHeader
         title="AI Breakdown"
         startDate={range.startDate}
@@ -365,6 +365,7 @@ export async function AiContent({ searchParams: sp, overviewHref, gscHref, ga4Hr
         ga4Href={ga4Href}
         aiHref={aiHref}
       />
+      <main className="bg-white min-h-screen">
 
       <AiControls
         properties={properties}
@@ -587,7 +588,8 @@ export async function AiContent({ searchParams: sp, overviewHref, gscHref, ga4Hr
         </div>
       </section>
 
+      </main>
       <PresentationFooter generatedAt={new Date()} />
-    </main>
+    </>
   );
 }

@@ -6,6 +6,7 @@ import type { GscSite } from "@/lib/gsc";
 import type { Ga4Property } from "@/lib/ga4";
 import { Combobox } from "../components/Combobox";
 import { RefreshButton } from "../components/RefreshButton";
+import { SlideToggle } from "../components/SlideToggle";
 
 const PRESET_DAYS = [
   { label: "Last 30d", value: 30 },
@@ -60,17 +61,13 @@ export function OverviewControls({
     return sp;
   }
 
-  function pushImmediate(updates: Record<string, string | null>) {
-    if (debounceRef.current) clearTimeout(debounceRef.current);
-    startTransition(() => router.push(`?${buildSp(updates).toString()}`));
-  }
-
   function pushDebounced(updates: Record<string, string | null>) {
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => {
       startTransition(() => router.push(`?${buildSp(updates).toString()}`));
     }, DEBOUNCE_MS);
   }
+  const pushImmediate = pushDebounced;
 
   function addBranded() {
     const v = draftBranded.trim();
@@ -173,20 +170,11 @@ export function OverviewControls({
       </div>
 
       <div className="flex flex-wrap items-end gap-3 border-t border-gray-100 pt-3">
-        <div className="inline-flex rounded-md border border-gray-300 overflow-hidden">
-          {PRESET_DAYS.map((p) => {
-            const active = !usingCustom && currentDays === p.value;
-            return (
-              <button
-                key={p.value}
-                onClick={() => pushImmediate({ days: String(p.value), start: null, end: null })}
-                className={`px-3 py-1.5 text-sm transition-colors ${active ? "bg-black text-white" : "bg-white text-gray-700 hover:bg-gray-50"}`}
-              >
-                {p.label}
-              </button>
-            );
-          })}
-        </div>
+        <SlideToggle
+          options={PRESET_DAYS.map((p) => ({ value: String(p.value), label: p.label }))}
+          value={!usingCustom ? String(currentDays) : ""}
+          onChange={(v) => pushImmediate({ days: v, start: null, end: null })}
+        />
 
         <div className="flex items-end gap-2">
           <label className="flex flex-col">

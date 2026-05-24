@@ -275,7 +275,7 @@ export async function OverviewContent({ searchParams: sp, overviewHref, gscHref,
   ];
 
   return (
-    <main className="bg-white min-h-screen">
+    <>
       <PresentationHeader
         title="Overview"
         startDate={range.startDate}
@@ -286,6 +286,7 @@ export async function OverviewContent({ searchParams: sp, overviewHref, gscHref,
         ga4Href={ga4Href}
         aiHref={aiHref}
       />
+      <main className="bg-white min-h-screen">
 
       <OverviewControls
         sites={sites}
@@ -387,7 +388,8 @@ export async function OverviewContent({ searchParams: sp, overviewHref, gscHref,
         </div>
       </section>
 
+      </main>
       <PresentationFooter generatedAt={new Date()} />
-    </main>
+    </>
   );
 }

@@ -247,18 +247,33 @@ export function Combobox({
                 const isInc = includeSet.has(o);
                 const isExc = excludeSet.has(o);
                 return (
-                  <label
-                    key={o}
-                    className={`flex items-center gap-2 px-3 py-1.5 text-sm hover:bg-gray-50 cursor-pointer ${isExc ? "text-rose-700 line-through" : ""}`}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={isInc}
-                      onChange={() => toggle(o)}
-                      className="shrink-0"
-                    />
-                    <span className="truncate" title={o}>{o}</span>
-                  </label>
+                  <div key={o} className="group flex items-stretch hover:bg-gray-50">
+                    <label
+                      className={`flex items-center gap-2 flex-1 min-w-0 px-3 py-1.5 text-sm cursor-pointer ${isExc ? "text-rose-700 line-through" : ""}`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={isInc}
+                        onChange={() => toggle(o)}
+                        className="shrink-0"
+                      />
+                      <span className="truncate" title={o}>{o}</span>
+                    </label>
+                    <button
+                      type="button"
+                      onMouseDown={(e) => e.preventDefault()}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        onChange([o], []);
+                        setSearch("");
+                      }}
+                      className="opacity-0 group-hover:opacity-100 transition-opacity px-3 text-[10px] uppercase tracking-wide text-blue-600 hover:bg-blue-50 hover:text-blue-800 font-semibold"
+                      title={`Select only ${o}`}
+                    >
+                      Only
+                    </button>
+                  </div>
                 );
               })
             )}

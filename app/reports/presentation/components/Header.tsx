@@ -32,7 +32,7 @@ export function PresentationHeader({
   ];
 
   return (
-    <header className="bg-black text-white">
+    <header className="relative z-[200] bg-black text-white">
       <div className="max-w-[1400px] mx-auto px-6 py-4 grid grid-cols-2 gap-y-3 items-center">
         {/* Top-left: logo */}
         <div className="flex items-center">

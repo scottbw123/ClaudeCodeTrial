@@ -285,7 +285,7 @@ export async function GscContent({ searchParams: sp, overviewHref, gscHref, ga4H
     .sort((a, b) => b.impressions - a.impressions);
 
   return (
-    <main className="bg-white min-h-screen">
+    <>
       <PresentationHeader
         title="Google Search Console"
         startDate={range.startDate}
@@ -296,6 +296,7 @@ export async function GscContent({ searchParams: sp, overviewHref, gscHref, ga4H
         ga4Href={ga4Href}
         aiHref={aiHref}
       />
+      <main className="bg-white min-h-screen">
 
       <GscControls
         sites={sites}
@@ -371,7 +372,8 @@ export async function GscContent({ searchParams: sp, overviewHref, gscHref, ga4H
         />
       </section>
 
+      </main>
       <PresentationFooter generatedAt={new Date()} />
-    </main>
+    </>
   );
 }

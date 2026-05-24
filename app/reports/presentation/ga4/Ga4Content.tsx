@@ -217,7 +217,7 @@ export async function Ga4Content({ searchParams: sp, overviewHref, gscHref, ga4H
           propertyId,
           startDate: range.startDate,
           endDate: range.endDate,
-          dimensions: ["pageLocation"],
+          dimensions: ["landingPagePlusQueryString"],
           metrics: ["screenPageViews", "activeUsers", "sessions", "eventCount", "keyEvents"],
           limit: 50,
           orderByMetric: { name: "screenPageViews" },
@@ -374,7 +374,7 @@ export async function Ga4Content({ searchParams: sp, overviewHref, gscHref, ga4H
   ];
 
   return (
-    <main className="bg-white min-h-screen">
+    <>
       <PresentationHeader
         title="Google Analytics 4"
         startDate={range.startDate}
@@ -385,6 +385,7 @@ export async function Ga4Content({ searchParams: sp, overviewHref, gscHref, ga4H
         ga4Href={ga4Href}
         aiHref={aiHref}
       />
+      <main className="bg-white min-h-screen">
 
       <Ga4Controls
         properties={properties}
@@ -423,7 +424,8 @@ export async function Ga4Content({ searchParams: sp, overviewHref, gscHref, ga4H
 
       <Ga4Tables trafficSources={trafficSources} events={events} pagePerformance={normalizePageRows(pagePerformance)} />
 
+      </main>
       <PresentationFooter generatedAt={new Date()} />
-    </main>
+    </>
   );
 }
