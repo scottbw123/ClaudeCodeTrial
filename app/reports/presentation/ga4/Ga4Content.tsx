@@ -141,9 +141,9 @@ export async function Ga4Content({ searchParams: sp, overviewHref, gscHref, ga4H
     filters.push({ fieldName: "sessionDefaultChannelGroup", values: channels });
   }
   if (pageUrls.length === 1) {
-    filters.push({ fieldName: "pageLocation", matchType: "CONTAINS", value: pageUrls[0] });
+    filters.push({ fieldName: "landingPagePlusQueryString", matchType: "CONTAINS", value: pageUrls[0] });
   } else if (pageUrls.length > 1) {
-    filters.push({ fieldName: "pageLocation", values: pageUrls });
+    filters.push({ fieldName: "landingPagePlusQueryString", values: pageUrls });
   }
   if (eventNames.length === 1) {
     filters.push({ fieldName: "eventName", value: eventNames[0] });
@@ -236,7 +236,7 @@ export async function Ga4Content({ searchParams: sp, overviewHref, gscHref, ga4H
           propertyId,
           startDate: range.startDate,
           endDate: range.endDate,
-          dimensions: ["pageLocation"],
+          dimensions: ["landingPagePlusQueryString"],
           metrics: ["screenPageViews"],
           limit: 50000,
           orderByMetric: { name: "screenPageViews" },

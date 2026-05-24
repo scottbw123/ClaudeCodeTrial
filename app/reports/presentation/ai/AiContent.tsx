@@ -123,8 +123,8 @@ export async function AiContent({ searchParams: sp, overviewHref, gscHref, ga4Hr
 
   const aiFilter: Ga4Filter = { fieldName: "sessionSource", values: AI_SOURCES };
   const baseFilters: Ga4Filter[] = [aiFilter];
-  if (pageUrls.length === 1) baseFilters.push({ fieldName: "pageLocation", matchType: "CONTAINS", value: pageUrls[0] });
-  else if (pageUrls.length > 1) baseFilters.push({ fieldName: "pageLocation", values: pageUrls });
+  if (pageUrls.length === 1) baseFilters.push({ fieldName: "landingPagePlusQueryString", matchType: "CONTAINS", value: pageUrls[0] });
+  else if (pageUrls.length > 1) baseFilters.push({ fieldName: "landingPagePlusQueryString", values: pageUrls });
   if (eventNames.length === 1) baseFilters.push({ fieldName: "eventName", value: eventNames[0] });
   else if (eventNames.length > 1) baseFilters.push({ fieldName: "eventName", values: eventNames });
 
@@ -269,7 +269,7 @@ export async function AiContent({ searchParams: sp, overviewHref, gscHref, ga4Hr
           propertyId,
           startDate: range.startDate,
           endDate: range.endDate,
-          dimensions: ["pageLocation"],
+          dimensions: ["landingPagePlusQueryString"],
           metrics: ["sessions"],
           limit: 5000,
           orderByMetric: { name: "sessions" },

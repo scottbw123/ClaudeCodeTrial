@@ -18,9 +18,14 @@ export function SlideToggle({
   onChange: (value: string) => void;
   className?: string;
 }) {
+  // Local state mirrors the prop but updates instantly on click — the slide
+  // animates immediately while onChange (debounced upstream) fires the data refetch.
+  const [localValue, setLocalValue] = useState(value);
+  useEffect(() => setLocalValue(value), [value]);
+
   const containerRef = useRef<HTMLDivElement>(null);
   const [highlight, setHighlight] = useState<{ left: number; width: number } | null>(null);
-  const idx = options.findIndex((o) => o.value === value);
+  const idx = options.findIndex((o) => o.value === localValue);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -52,12 +57,15 @@ export function SlideToggle({
         />
       )}
       {options.map((o) => {
-        const active = o.value === value;
+        const active = o.value === localValue;
         return (
           <button
             key={o.value}
             type="button"
-            onClick={() => onChange(o.value)}
+            onClick={() => {
+              setLocalValue(o.value);
+              onChange(o.value);
+            }}
             className={`relative z-10 px-3 py-1.5 text-sm transition-colors whitespace-nowrap ${
               active ? "text-white" : "text-gray-700 hover:text-gray-900"
             }`}
