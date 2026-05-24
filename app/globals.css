@@ -8,14 +8,14 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-jost), -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-sans: var(--font-montserrat), -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   --font-serif: var(--font-cormorant), Georgia, serif;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: var(--font-jost), -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-family: var(--font-montserrat), -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   font-weight: 400;
 }
 
@@ -38,11 +38,15 @@ h1, h2, h3, h4, h5, h6 {
   font-feature-settings: "tnum";
 }
 
-/* Soft fade-in for page content on navigation — feels responsive when switching tabs. */
-@keyframes page-fade-in {
-  from { opacity: 0.45; filter: blur(2px); }
-  to   { opacity: 1;    filter: blur(0); }
-}
+/* Page-navigation pending state: blur the current main while the next page loads.
+   Set on <body> by each tab Link's useLinkStatus effect. The new main element
+   doesn't carry the data attr so it appears fresh once navigation completes. */
 main {
-  animation: page-fade-in 220ms ease-out;
+  transition: filter 240ms ease-out, opacity 240ms ease-out;
+}
+body[data-navigating="true"] main {
+  filter: blur(3px);
+  opacity: 0.55;
+  pointer-events: none;
+  transition: filter 80ms ease-in, opacity 80ms ease-in;
 }

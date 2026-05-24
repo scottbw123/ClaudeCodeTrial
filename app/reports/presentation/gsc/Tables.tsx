@@ -158,24 +158,22 @@ export function DeltaTable({
               <tr><td colSpan={10} className="px-4 py-6 text-center text-gray-400">No data</td></tr>
             )}
           </tbody>
+          <tfoot className="sticky bottom-0 z-10">
+            <tr className="font-semibold bg-white border-t-2 border-gray-300">
+              <td className="px-4 py-2"></td>
+              <td className="px-4 py-2">Grand total</td>
+              <td className="px-4 py-2 text-right tabular-nums">{fmtInt(totals.impressions)}</td>
+              <td className="px-4 py-2 text-right"><Delta change={totals.impressionsChange} /></td>
+              <td className="px-4 py-2 text-right tabular-nums">{fmtInt(totals.clicks)}</td>
+              <td className="px-4 py-2 text-right"><Delta change={totals.clicksChange} /></td>
+              <td className="px-4 py-2 text-right tabular-nums">{totals.position.toFixed(2)}</td>
+              <td className="px-4 py-2 text-right"><Delta change={totals.positionChange} invert /></td>
+              <td className="px-4 py-2 text-right tabular-nums">{fmtPct(totals.ctr)}</td>
+              <td className="px-4 py-2 text-right"><Delta change={totals.ctrChange} /></td>
+            </tr>
+          </tfoot>
         </table>
       </div>
-      <table className="min-w-full text-sm border-t-2 border-gray-300">
-        <tbody>
-          <tr className="font-semibold bg-white">
-            <td className="px-4 py-2 w-[60px]"></td>
-            <td className="px-4 py-2">Grand total</td>
-            <td className="px-4 py-2 text-right tabular-nums">{fmtInt(totals.impressions)}</td>
-            <td className="px-4 py-2 text-right"><Delta change={totals.impressionsChange} /></td>
-            <td className="px-4 py-2 text-right tabular-nums">{fmtInt(totals.clicks)}</td>
-            <td className="px-4 py-2 text-right"><Delta change={totals.clicksChange} /></td>
-            <td className="px-4 py-2 text-right tabular-nums">{totals.position.toFixed(2)}</td>
-            <td className="px-4 py-2 text-right"><Delta change={totals.positionChange} invert /></td>
-            <td className="px-4 py-2 text-right tabular-nums">{fmtPct(totals.ctr)}</td>
-            <td className="px-4 py-2 text-right"><Delta change={totals.ctrChange} /></td>
-          </tr>
-        </tbody>
-      </table>
     </section>
   );
 }
