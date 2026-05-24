@@ -382,7 +382,7 @@ export async function OverviewContent({ searchParams: sp, overviewHref, gscHref,
           <h2 className="text-2xl text-gray-900">Layer #3: Business Validation</h2>
           <p className="text-sm text-gray-500 not-italic">Ultimate objectives to validate success and opportunity after designated time ranges.</p>
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
           {layer3Cards.map((c) => <OverviewMetricCard key={c.label} {...c} />)}
         </div>
       </section>
