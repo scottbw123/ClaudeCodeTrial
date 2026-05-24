@@ -1,4 +1,4 @@
-import { queryGsc, queryGscPaginated, listSites, escapeRegex, type GscFilter, type GscRow } from "@/lib/gsc";
+import { queryGsc, queryGscPaginated, queryGscFiltered, listSites, type GscRow } from "@/lib/gsc";
 import { previousPeriod, rangeFromDays, daysBetween } from "@/lib/date-utils";
 import { PresentationHeader } from "../components/Header";
 import { PresentationFooter } from "../components/Footer";
@@ -39,8 +39,8 @@ function formatBig(n: number): string {
   return new Intl.NumberFormat("en-US").format(Math.round(n));
 }
 
-async function fetchPeriod(siteUrl: string, startDate: string, endDate: string, filters: GscFilter[]): Promise<GscRow[]> {
-  return queryGsc({ siteUrl, startDate, endDate, dimensions: ["date"], rowLimit: 1000, filters });
+async function fetchPeriod(siteUrl: string, startDate: string, endDate: string, filterQueries: string[], filterPages: string[]): Promise<GscRow[]> {
+  return queryGscFiltered({ siteUrl, startDate, endDate, dimensions: ["date"], rowLimit: 1000, filterQueries, filterPages });
 }
 
 function buildCallouts(
@@ -96,30 +96,7 @@ export async function GscContent({ searchParams: sp, overviewHref, gscHref, ga4H
   const computedDays = daysBetween(range.startDate, range.endDate);
   const compareRange = previousPeriod(range.startDate, range.endDate);
 
-  const MAX_FILTER_VALUES = 100;
-  const filterWarnings: string[] = [];
-
-  function buildRegexFilter(dimension: "query" | "page", values: string[]): GscFilter | null {
-    if (values.length === 0) return null;
-    if (values.length === 1) {
-      return { dimension, operator: "equals", expression: values[0] };
-    }
-    let useValues = values;
-    if (values.length > MAX_FILTER_VALUES) {
-      useValues = values.slice(0, MAX_FILTER_VALUES);
-      filterWarnings.push(
-        `${dimension} filter capped at first ${MAX_FILTER_VALUES} of ${values.length} selections (GSC regex limit).`
-      );
-    }
-    const escaped = useValues.map(escapeRegex).join("|");
-    return { dimension, operator: "includingRegex", expression: `^(${escaped})$` };
-  }
-
-  const filters: GscFilter[] = [];
-  const qf = buildRegexFilter("query", filterQueries);
-  if (qf) filters.push(qf);
-  const pf = buildRegexFilter("page", filterPages);
-  if (pf) filters.push(pf);
+  // Filters now batched automatically inside queryGscFiltered — no cap needed.
 
   const range30 = rangeFromDays(30);
   const range90 = rangeFromDays(90);
@@ -158,23 +135,23 @@ export async function GscContent({ searchParams: sp, overviewHref, gscHref, ga4H
         currentCountries,
         c30, p30, c90, p90, c180, p180,
       ] = await Promise.all([
-        fetchPeriod(siteUrl, range.startDate, range.endDate, filters),
-        fetchPeriod(siteUrl, compareRange.startDate, compareRange.endDate, filters),
-        queryGsc({ siteUrl, ...range, dimensions: ["query"], rowLimit: 500, filters }),
-        queryGsc({ siteUrl, ...compareRange, dimensions: ["query"], rowLimit: 500, filters }),
-        queryGsc({ siteUrl, ...range, dimensions: ["page"], rowLimit: 500, filters }),
-        queryGsc({ siteUrl, ...compareRange, dimensions: ["page"], rowLimit: 500, filters }),
+        fetchPeriod(siteUrl, range.startDate, range.endDate, filterQueries, filterPages),
+        fetchPeriod(siteUrl, compareRange.startDate, compareRange.endDate, filterQueries, filterPages),
+        queryGscFiltered({ siteUrl, ...range, dimensions: ["query"], rowLimit: 500, filterQueries, filterPages }),
+        queryGscFiltered({ siteUrl, ...compareRange, dimensions: ["query"], rowLimit: 500, filterQueries, filterPages }),
+        queryGscFiltered({ siteUrl, ...range, dimensions: ["page"], rowLimit: 500, filterQueries, filterPages }),
+        queryGscFiltered({ siteUrl, ...compareRange, dimensions: ["page"], rowLimit: 500, filterQueries, filterPages }),
         queryGscPaginated({ siteUrl, ...range, dimensions: ["query"] }, 50000),
         queryGscPaginated({ siteUrl, ...range, dimensions: ["page"] }, 50000),
-        queryGsc({ siteUrl, ...range, dimensions: ["device"], rowLimit: 10, filters }),
-        queryGsc({ siteUrl, ...compareRange, dimensions: ["device"], rowLimit: 10, filters }),
-        queryGsc({ siteUrl, ...range, dimensions: ["country"], rowLimit: 250, filters }),
-        fetchPeriod(siteUrl, range30.startDate, range30.endDate, filters),
-        fetchPeriod(siteUrl, prev30.startDate, prev30.endDate, filters),
-        fetchPeriod(siteUrl, range90.startDate, range90.endDate, filters),
-        fetchPeriod(siteUrl, prev90.startDate, prev90.endDate, filters),
-        fetchPeriod(siteUrl, range180.startDate, range180.endDate, filters),
-        fetchPeriod(siteUrl, prev180.startDate, prev180.endDate, filters),
+        queryGscFiltered({ siteUrl, ...range, dimensions: ["device"], rowLimit: 10, filterQueries, filterPages }),
+        queryGscFiltered({ siteUrl, ...compareRange, dimensions: ["device"], rowLimit: 10, filterQueries, filterPages }),
+        queryGscFiltered({ siteUrl, ...range, dimensions: ["country"], rowLimit: 250, filterQueries, filterPages }),
+        fetchPeriod(siteUrl, range30.startDate, range30.endDate, filterQueries, filterPages),
+        fetchPeriod(siteUrl, prev30.startDate, prev30.endDate, filterQueries, filterPages),
+        fetchPeriod(siteUrl, range90.startDate, range90.endDate, filterQueries, filterPages),
+        fetchPeriod(siteUrl, prev90.startDate, prev90.endDate, filterQueries, filterPages),
+        fetchPeriod(siteUrl, range180.startDate, range180.endDate, filterQueries, filterPages),
+        fetchPeriod(siteUrl, prev180.startDate, prev180.endDate, filterQueries, filterPages),
       ]);
     } catch (err) {
       fetchError = err instanceof Error ? err.message : String(err);
@@ -326,11 +303,6 @@ export async function GscContent({ searchParams: sp, overviewHref, gscHref, ga4H
         pageOptions={pageOptionsRows.map((r) => r.keys[0] ?? "").filter(Boolean)}
       />
 
-      {filterWarnings.length > 0 && (
-        <div className="max-w-[1400px] mx-auto px-6 mt-4 rounded-lg bg-amber-50 border border-amber-200 px-4 py-2 text-xs text-amber-800">
-          {filterWarnings.map((w, i) => <div key={i}>{w}</div>)}
-        </div>
-      )}
       {fetchError && (
         <div className="max-w-[1400px] mx-auto px-6 mt-6 rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
           {fetchError}

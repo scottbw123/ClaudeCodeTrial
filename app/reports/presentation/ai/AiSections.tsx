@@ -64,39 +64,59 @@ export function TopSourcesDonut({
   const arrow = totalChange > 0 ? "▲" : totalChange < 0 ? "▼" : "·";
   const color = totalChange > 0 ? "text-emerald-600" : totalChange < 0 ? "text-rose-600" : "text-gray-400";
 
+  const renderInsideLabel = (props: unknown) => {
+    const p = props as { cx: number; cy: number; midAngle: number; innerRadius: number; outerRadius: number; percent: number };
+    if (p.percent < 0.05) return null;
+    const RADIAN = Math.PI / 180;
+    const radius = p.innerRadius + (p.outerRadius - p.innerRadius) * 0.55;
+    const x = p.cx + radius * Math.cos(-p.midAngle * RADIAN);
+    const y = p.cy + radius * Math.sin(-p.midAngle * RADIAN);
+    return (
+      <text x={x} y={y} fill="#fff" textAnchor="middle" dominantBaseline="central" fontSize="12" fontWeight="600">
+        {(p.percent * 100).toFixed(1)}%
+      </text>
+    );
+  };
+
   return (
     <div className="bg-white border border-gray-200 rounded-md p-4">
       <h3 className="text-center text-lg font-bold mb-2">Top Sources</h3>
-      <div className="h-72 relative">
-        <ResponsiveContainer width="100%" height="100%">
-          <PieChart>
-            <Pie
-              data={data.map((d) => ({ ...d, pct: d.value / sum }))}
-              dataKey="value"
-              cx="40%"
-              cy="50%"
-              innerRadius={60}
-              outerRadius={100}
-              label={(entry: unknown) => {
-                const pct = (entry as { pct?: number }).pct ?? 0;
-                if (pct < 0.04) return "";
-                return `${(pct * 100).toFixed(1)}%`;
-              }}
-              labelLine={false}
-            >
-              {data.map((d) => (
-                <Cell key={d.name} fill={colorForAiSource(d.name)} />
-              ))}
-            </Pie>
-            <Tooltip formatter={(v) => new Intl.NumberFormat("en-US").format(Number(v))} />
-            <Legend layout="vertical" verticalAlign="middle" align="right" wrapperStyle={{ paddingLeft: 16, fontSize: 12 }} />
-          </PieChart>
-        </ResponsiveContainer>
-        <div className="absolute left-[40%] top-[50%] -translate-x-1/2 -translate-y-1/2 text-center pointer-events-none">
-          <p className="text-xs text-gray-500">{totalLabel}</p>
-          <p className="text-2xl font-bold tabular-nums">{new Intl.NumberFormat("en-US").format(totalValue)}</p>
-          <p className={`text-xs font-medium ${color}`}>{arrow} {Math.abs(totalChange * 100).toFixed(1)}%</p>
+      <div className="grid grid-cols-[1fr_auto] gap-4 items-center">
+        <div className="h-72 relative">
+          <ResponsiveContainer width="100%" height="100%">
+            <PieChart>
+              <Pie
+                data={data.map((d) => ({ ...d, pct: d.value / sum }))}
+                dataKey="value"
+                cx="50%"
+                cy="50%"
+                innerRadius={62}
+                outerRadius={110}
+                label={renderInsideLabel}
+                labelLine={false}
+                isAnimationActive={false}
+              >
+                {data.map((d) => (
+                  <Cell key={d.name} fill={colorForAiSource(d.name)} />
+                ))}
+              </Pie>
+              <Tooltip formatter={(v) => new Intl.NumberFormat("en-US").format(Number(v))} />
+            </PieChart>
+          </ResponsiveContainer>
+          <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-center pointer-events-none">
+            <p className="text-[10px] uppercase tracking-wide text-gray-500">{totalLabel}</p>
+            <p className="text-2xl font-bold tabular-nums">{new Intl.NumberFormat("en-US").format(totalValue)}</p>
+            <p className={`text-xs font-medium ${color}`}>{arrow} {Math.abs(totalChange * 100).toFixed(1)}%</p>
+          </div>
         </div>
+        <ul className="text-xs space-y-1 pr-2">
+          {data.map((d) => (
+            <li key={d.name} className="flex items-center gap-2 whitespace-nowrap">
+              <span className="inline-block w-2.5 h-2.5 rounded-sm" style={{ background: colorForAiSource(d.name) }} />
+              <span className="text-gray-700">{d.name}</span>
+            </li>
+          ))}
+        </ul>
       </div>
     </div>
   );
@@ -116,8 +136,8 @@ export function StackedBarBySource({
           <CartesianGrid stroke="#f3f4f6" strokeDasharray="3 3" />
           <XAxis dataKey="week" tick={{ fontSize: 10, fill: "#9ca3af" }} angle={-25} textAnchor="end" height={50} />
           <YAxis tick={{ fontSize: 10, fill: "#9ca3af" }} width={36} />
-          <Tooltip contentStyle={{ fontSize: 12, borderRadius: 6 }} />
-          <Legend wrapperStyle={{ fontSize: 11 }} />
+          <Tooltip contentStyle={{ fontSize: 11, borderRadius: 6, maxWidth: 280 }} wrapperStyle={{ zIndex: 50 }} />
+          <Legend wrapperStyle={{ fontSize: 11, paddingTop: 4 }} verticalAlign="top" />
           {sources.map((s) => (
             <Bar key={s} dataKey={s} stackId="a" fill={colorForAiSource(s)} />
           ))}
@@ -140,19 +160,28 @@ export function StackedBarByEvent({
   events: string[];
 }) {
   return (
-    <div className="h-72">
-      <ResponsiveContainer width="100%" height="100%">
-        <BarChart data={data} margin={{ top: 8, right: 8, bottom: 30, left: 0 }}>
-          <CartesianGrid stroke="#f3f4f6" strokeDasharray="3 3" />
-          <XAxis dataKey="week" tick={{ fontSize: 10, fill: "#9ca3af" }} angle={-25} textAnchor="end" height={50} />
-          <YAxis tick={{ fontSize: 10, fill: "#9ca3af" }} width={36} />
-          <Tooltip contentStyle={{ fontSize: 12, borderRadius: 6 }} />
-          <Legend wrapperStyle={{ fontSize: 11 }} />
-          {events.map((e, i) => (
-            <Bar key={e} dataKey={e} stackId="a" fill={EVENT_COLORS[i % EVENT_COLORS.length]} />
-          ))}
-        </BarChart>
-      </ResponsiveContainer>
+    <div className="h-[420px] flex flex-col">
+      <ul className="grid grid-cols-2 md:grid-cols-3 gap-x-3 gap-y-0.5 text-[10px] text-gray-700 mb-2 max-h-24 overflow-y-auto">
+        {events.map((e, i) => (
+          <li key={e} className="flex items-center gap-1.5 truncate" title={e}>
+            <span className="inline-block w-2 h-2 rounded-sm shrink-0" style={{ background: EVENT_COLORS[i % EVENT_COLORS.length] }} />
+            <span className="truncate">{e}</span>
+          </li>
+        ))}
+      </ul>
+      <div className="flex-1 min-h-0">
+        <ResponsiveContainer width="100%" height="100%">
+          <BarChart data={data} margin={{ top: 8, right: 8, bottom: 30, left: 0 }}>
+            <CartesianGrid stroke="#f3f4f6" strokeDasharray="3 3" />
+            <XAxis dataKey="week" tick={{ fontSize: 10, fill: "#9ca3af" }} angle={-25} textAnchor="end" height={50} />
+            <YAxis tick={{ fontSize: 10, fill: "#9ca3af" }} width={36} />
+            <Tooltip contentStyle={{ fontSize: 11, borderRadius: 6, maxWidth: 280, maxHeight: 320, overflow: "auto" }} wrapperStyle={{ zIndex: 50 }} />
+            {events.map((e, i) => (
+              <Bar key={e} dataKey={e} stackId="a" fill={EVENT_COLORS[i % EVENT_COLORS.length]} />
+            ))}
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
     </div>
   );
 }

@@ -20,9 +20,10 @@ export interface Ga4ReportResult {
 
 export interface Ga4Filter {
   fieldName: string;
-  matchType?: "EXACT" | "CONTAINS" | "BEGINS_WITH";
+  matchType?: "EXACT" | "CONTAINS" | "BEGINS_WITH" | "FULL_REGEXP" | "PARTIAL_REGEXP";
   value?: string;
   values?: string[];
+  negate?: boolean;
 }
 
 export async function listProperties(): Promise<Ga4Property[]> {
@@ -43,20 +44,23 @@ export async function listProperties(): Promise<Ga4Property[]> {
 }
 
 function singleFilterExpression(f: Ga4Filter) {
+  let core;
   if (f.values && f.values.length > 0) {
-    return {
+    core = {
       filter: {
         fieldName: f.fieldName,
         inListFilter: { values: f.values },
       },
     };
+  } else {
+    core = {
+      filter: {
+        fieldName: f.fieldName,
+        stringFilter: { matchType: f.matchType ?? "EXACT", value: f.value ?? "" },
+      },
+    };
   }
-  return {
-    filter: {
-      fieldName: f.fieldName,
-      stringFilter: { matchType: f.matchType ?? "EXACT", value: f.value ?? "" },
-    },
-  };
+  return f.negate ? { notExpression: core } : core;
 }
 
 function buildDimensionFilter(filters: Ga4Filter[]) {
