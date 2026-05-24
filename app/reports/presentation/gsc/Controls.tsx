@@ -95,7 +95,7 @@ export function GscControls({
           placeholder="Select a site…"
         />
         <Combobox
-          label="Landing Page (multi-select)"
+          label="Landing Page contains (substring)"
           values={localPages}
           mode={localPagesMode}
           options={pageOptions}
@@ -111,7 +111,7 @@ export function GscControls({
           placeholder="All pages"
         />
         <Combobox
-          label="Query (multi-select)"
+          label="Query contains (substring)"
           values={localQueries}
           mode={localQueriesMode}
           options={queryOptions}

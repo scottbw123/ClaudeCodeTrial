@@ -79,9 +79,11 @@ const FILTER_BATCH_SIZE = 80;
 
 function buildRegexFilter(dimension: GscDimension, values: string[]): GscFilter | null {
   if (values.length === 0) return null;
-  if (values.length === 1) return { dimension, operator: "equals", expression: values[0] };
+  if (values.length === 1) {
+    return { dimension, operator: "includingRegex", expression: escapeRegex(values[0]) };
+  }
   const escaped = values.map(escapeRegex).join("|");
-  return { dimension, operator: "includingRegex", expression: `^(${escaped})$` };
+  return { dimension, operator: "includingRegex", expression: `(${escaped})` };
 }
 
 function mergeRows(rows: GscRow[]): GscRow[] {
@@ -114,7 +116,7 @@ function buildExcludeFilters(dimension: GscDimension, values: string[]): GscFilt
   for (let i = 0; i < values.length; i += FILTER_BATCH_SIZE) {
     const batch = values.slice(i, i + FILTER_BATCH_SIZE);
     const escaped = batch.map(escapeRegex).join("|");
-    out.push({ dimension, operator: "excludingRegex", expression: `^(${escaped})$` });
+    out.push({ dimension, operator: "excludingRegex", expression: `(${escaped})` });
   }
   return out;
 }
@@ -147,54 +149,23 @@ export async function queryGscFiltered(opts: {
     ...buildExcludeFilters("page", pageExcludeValues),
   ];
 
-  // Include filters: if both are small enough, one query; otherwise batch the larger one.
-  const needsQueryBatch = queryIncludeValues.length > FILTER_BATCH_SIZE;
-  const needsPageBatch = pageIncludeValues.length > FILTER_BATCH_SIZE;
-
-  if (!needsQueryBatch && !needsPageBatch) {
-    const filters: GscFilter[] = [...excludeFilters];
-    const q = buildRegexFilter("query", queryIncludeValues);
-    if (q) filters.push(q);
-    const p = buildRegexFilter("page", pageIncludeValues);
-    if (p) filters.push(p);
-    return queryGsc({
-      siteUrl: opts.siteUrl,
-      startDate: opts.startDate,
-      endDate: opts.endDate,
-      dimensions: opts.dimensions,
-      rowLimit: opts.rowLimit,
-      filters,
-    });
-  }
-
-  const batchDim: GscDimension = queryIncludeValues.length >= pageIncludeValues.length ? "query" : "page";
-  const batchValues = batchDim === "query" ? queryIncludeValues : pageIncludeValues;
-  const otherDim: GscDimension = batchDim === "query" ? "page" : "query";
-  const otherValues = batchDim === "query" ? pageIncludeValues : queryIncludeValues;
-
-  const batches: string[][] = [];
-  for (let i = 0; i < batchValues.length; i += FILTER_BATCH_SIZE) {
-    batches.push(batchValues.slice(i, i + FILTER_BATCH_SIZE));
-  }
-
-  const promises = batches.map((batch) => {
-    const filters: GscFilter[] = [...excludeFilters];
-    const bf = buildRegexFilter(batchDim, batch);
-    if (bf) filters.push(bf);
-    const of = buildRegexFilter(otherDim, otherValues);
-    if (of) filters.push(of);
-    return queryGsc({
-      siteUrl: opts.siteUrl,
-      startDate: opts.startDate,
-      endDate: opts.endDate,
-      dimensions: opts.dimensions,
-      rowLimit: opts.rowLimit,
-      filters,
-    });
+  // Include filters use substring semantics — must fit in a single GSC request
+  // (parallel batching would double-count queries that match patterns across batches).
+  // GSC enforces a 4096-byte regex limit; with typical substring patterns that's room
+  // for ~150-400 entries depending on length.
+  const filters: GscFilter[] = [...excludeFilters];
+  const q = buildRegexFilter("query", queryIncludeValues);
+  if (q) filters.push(q);
+  const p = buildRegexFilter("page", pageIncludeValues);
+  if (p) filters.push(p);
+  return queryGsc({
+    siteUrl: opts.siteUrl,
+    startDate: opts.startDate,
+    endDate: opts.endDate,
+    dimensions: opts.dimensions,
+    rowLimit: opts.rowLimit,
+    filters,
   });
-
-  const results = await Promise.all(promises);
-  return mergeRows(results.flat());
 }
 
 export async function queryGscPaginated(

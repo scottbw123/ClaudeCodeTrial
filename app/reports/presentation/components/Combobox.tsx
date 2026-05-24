@@ -164,11 +164,28 @@ export function Combobox({ label, values, options, onChange, multi = false, mode
               autoFocus
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder={`Search ${options.length.toLocaleString()} options…`}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && multi && search.trim()) {
+                  e.preventDefault();
+                  const term = search.trim();
+                  if (mode === "include") {
+                    if (!values.includes(term)) onChange([...values, term], "include");
+                  } else {
+                    if (!values.includes(term)) onChange([...values, term], "exclude");
+                  }
+                  setSearch("");
+                }
+              }}
+              placeholder={`Search ${options.length.toLocaleString()} options or type custom term…`}
               className="w-full outline-none text-sm px-2 py-1 rounded border border-gray-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
             />
             {multi && (
-              <div className="flex flex-wrap gap-3 mt-1.5 text-xs">
+              <div className="flex flex-wrap gap-3 mt-1.5 text-xs items-center">
+                {search.trim() !== "" && (
+                  <span className="text-gray-500">
+                    Press <kbd className="px-1 py-0.5 rounded bg-gray-100 border border-gray-300 text-[10px] font-mono">Enter</kbd> to add &ldquo;{search.trim()}&rdquo; as a substring filter
+                  </span>
+                )}
                 {search === "" && mode === "include" && (
                   <button type="button" onClick={selectAllNoLimit} className="text-blue-600 hover:underline font-medium">
                     Select all (no URL limit)
