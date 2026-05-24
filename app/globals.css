@@ -24,27 +24,32 @@ body {
   border-radius: 0 !important;
 }
 
-/* Headings: bold italic Cormorant Garamond. */
-h1, h2, h3, h4, h5, h6 {
+/* Headings only: bold italic Cormorant Garamond. The :where() wrapper keeps
+   specificity low so a deliberate inline font override still wins, but children
+   of headings inherit Cormorant too (so a span inside an <h2> stays Cormorant). */
+:where(h1, h2, h3, h4, h5, h6),
+:where(h1, h2, h3, h4, h5, h6) * {
   font-family: var(--font-cormorant), Georgia, serif;
   font-style: italic;
   font-weight: 700;
   letter-spacing: -0.01em;
 }
 
-/* Tabular numbers stay legible. */
+/* Tabular numbers — Montserrat, aligned digits. Force Montserrat explicitly so
+   data cells/cards stay sans even if a parent happens to be a heading. */
 .tabular-nums {
+  font-family: var(--font-montserrat), -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif !important;
+  font-style: normal !important;
   font-variant-numeric: tabular-nums;
   font-feature-settings: "tnum";
 }
 
-/* Page-navigation pending state: blur the current main while the next page loads.
-   Set on <body> by each tab Link's useLinkStatus effect. The new main element
-   doesn't carry the data attr so it appears fresh once navigation completes. */
-main {
+/* Page-navigation pending state: blur everything in <main> EXCEPT the <header>
+   so the tabs/title stay sharp while the data area below dims. */
+main > :not(header) {
   transition: filter 240ms ease-out, opacity 240ms ease-out;
 }
-body[data-navigating="true"] main {
+body[data-navigating="true"] main > :not(header) {
   filter: blur(3px);
   opacity: 0.55;
   pointer-events: none;
