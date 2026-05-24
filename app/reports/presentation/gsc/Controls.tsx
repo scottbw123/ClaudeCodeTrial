@@ -100,6 +100,7 @@ export function GscControls({
           mode={localPagesMode}
           options={pageOptions}
           multi
+          substringMode
           onChange={(vs, mode) => {
             setLocalPages(vs);
             setLocalPagesMode(mode);
@@ -116,6 +117,7 @@ export function GscControls({
           mode={localQueriesMode}
           options={queryOptions}
           multi
+          substringMode
           onChange={(vs, mode) => {
             setLocalQueries(vs);
             setLocalQueriesMode(mode);

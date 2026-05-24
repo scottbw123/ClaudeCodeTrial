@@ -12,11 +12,19 @@ export interface ComboboxProps {
   multi?: boolean;
   mode?: FilterMode;
   placeholder?: string;
+  /**
+   * If true, bulk "matching" actions add the SEARCH TEXT as a single substring chip
+   * (avoids stuffing thousands of items into the URL). Use for filters that the server
+   * resolves with substring/regex matching (e.g. GSC query/page, GA4 pageLocation CONTAINS).
+   * If false, bulk actions add individual matching items (capped to BULK_CAP).
+   */
+  substringMode?: boolean;
 }
 
 const RENDER_CAP = 500;
+const BULK_CAP = 50;
 
-export function Combobox({ label, values, options, onChange, multi = false, mode = "include", placeholder }: ComboboxProps) {
+export function Combobox({ label, values, options, onChange, multi = false, mode = "include", placeholder, substringMode = false }: ComboboxProps) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
   const containerRef = useRef<HTMLDivElement>(null);
@@ -71,22 +79,44 @@ export function Combobox({ label, values, options, onChange, multi = false, mode
 
   function selectAllMatching() {
     if (!multi) return;
+    if (substringMode) {
+      const term = search.trim();
+      if (!term) return;
+      if (mode === "include") {
+        if (!values.includes(term)) onChange([...values, term], "include");
+      } else {
+        onChange(values.filter((v) => v !== term), "exclude");
+      }
+      setSearch("");
+      return;
+    }
+    const take = filtered.slice(0, BULK_CAP);
     if (mode === "include") {
-      const merged = Array.from(new Set([...values, ...filtered]));
+      const merged = Array.from(new Set([...values, ...take]));
       onChange(merged, "include");
     } else {
-      // in exclude mode: "select all matching" = remove them from exclude list
-      onChange(values.filter((v) => !filtered.includes(v)), "exclude");
+      onChange(values.filter((v) => !take.includes(v)), "exclude");
     }
   }
 
   function deselectAllMatching() {
     if (!multi) return;
+    if (substringMode) {
+      const term = search.trim();
+      if (!term) return;
+      if (mode === "exclude") {
+        if (!values.includes(term)) onChange([...values, term], "exclude");
+      } else {
+        onChange(values.filter((v) => v !== term), "include");
+      }
+      setSearch("");
+      return;
+    }
+    const take = filtered.slice(0, BULK_CAP);
     if (mode === "include") {
-      onChange(values.filter((v) => !filtered.includes(v)), "include");
+      onChange(values.filter((v) => !take.includes(v)), "include");
     } else {
-      // in exclude mode: "deselect all matching" = add them to exclude list
-      const merged = Array.from(new Set([...values, ...filtered]));
+      const merged = Array.from(new Set([...values, ...take]));
       onChange(merged, "exclude");
     }
   }
@@ -180,26 +210,31 @@ export function Combobox({ label, values, options, onChange, multi = false, mode
               className="w-full outline-none text-sm px-2 py-1 rounded border border-gray-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
             />
             {multi && (
-              <div className="flex flex-wrap gap-3 mt-1.5 text-xs items-center">
-                {search.trim() !== "" && (
-                  <span className="text-gray-500">
-                    Press <kbd className="px-1 py-0.5 rounded bg-gray-100 border border-gray-300 text-[10px] font-mono">Enter</kbd> to add &ldquo;{search.trim()}&rdquo; as a substring filter
-                  </span>
-                )}
-                {search === "" && mode === "include" && (
+              <div className="flex flex-col gap-1 mt-1.5">
+                <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs items-center">
+                  <span className="text-[10px] uppercase tracking-wide text-gray-400">All:</span>
                   <button type="button" onClick={selectAllNoLimit} className="text-blue-600 hover:underline font-medium">
-                    Select all (no URL limit)
+                    Select all
                   </button>
-                )}
-                {search !== "" && filtered.length > 0 && (
-                  <>
-                    <button type="button" onClick={selectAllMatching} className="text-blue-600 hover:underline font-medium">
-                      Select all {filtered.length.toLocaleString()} matching
-                    </button>
-                    <button type="button" onClick={deselectAllMatching} className="text-gray-600 hover:underline">
-                      Deselect all matching
-                    </button>
-                  </>
+                  <button type="button" onClick={clearAll} className="text-gray-700 hover:underline">
+                    Deselect all
+                  </button>
+                  {search.trim() !== "" && filtered.length > 0 && (
+                    <>
+                      <span className="text-[10px] uppercase tracking-wide text-gray-400 ml-2">Matching:</span>
+                      <button type="button" onClick={selectAllMatching} className="text-blue-600 hover:underline font-medium">
+                        Select {filtered.length.toLocaleString()}
+                      </button>
+                      <button type="button" onClick={deselectAllMatching} className="text-gray-700 hover:underline">
+                        Deselect {filtered.length.toLocaleString()}
+                      </button>
+                    </>
+                  )}
+                </div>
+                {search.trim() !== "" && (
+                  <span className="text-[10px] text-gray-500">
+                    Press <kbd className="px-1 py-0.5 rounded bg-gray-100 border border-gray-300 font-mono">Enter</kbd> to add &ldquo;{search.trim()}&rdquo; as a substring filter
+                  </span>
                 )}
               </div>
             )}

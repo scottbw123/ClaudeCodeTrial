@@ -93,6 +93,7 @@ export function AiControls({
           values={localPageUrls}
           options={pageOptions}
           multi
+          substringMode
           onChange={(vs) => {
             setLocalPageUrls(vs);
             pushDebounced({ pageUrl: vs.length ? vs.join(",") : null });

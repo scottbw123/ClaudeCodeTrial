@@ -6,6 +6,7 @@ import { PresentationHeader } from "../components/Header";
 import { PresentationFooter } from "../components/Footer";
 import { OverviewControls } from "./Controls";
 import { OverviewMetricCard, type Sparkpoint } from "./MetricCard";
+import { BrandedComparison } from "./BrandedComparison";
 
 interface Props {
   searchParams: Record<string, string | undefined>;
@@ -219,21 +220,45 @@ export async function OverviewContent({ searchParams: sp, overviewHref, gscHref,
   const conversionRate = ratio(eventsTotal, usersTotal);
   const conversionRatePrev = ratio(eventsTotalPrev, usersTotalPrev);
 
-  const cards = [
+  const layer1Cards = [
     { label: "Impressions (Total)", source: "GSC" as const, value: formatBig(totalImpressions), changePercent: pct(totalImpressions, totalImpressionsPrev), data: spark(gAll, 0) },
     { label: "Impressions (Branded)", source: "GSC" as const, value: formatBig(brandedImpressions), changePercent: pct(brandedImpressions, brandedImpressionsPrev), data: spark(gBranded, 0) },
     { label: "Impressions (Non-Branded)", source: "GSC" as const, value: formatBig(nbImpressions), changePercent: pct(nbImpressions, nbImpressionsPrev), data: spark(gNonBranded, 0) },
     { label: "Avg. Position (Non-Branded)", source: "GSC" as const, value: nbPosition > 0 ? nbPosition.toFixed(1) : "—", changePercent: pct(nbPosition, nbPositionPrev), invertColors: true, data: spark(gNonBranded, 3) },
+    { label: "Bounce Rate (Organic Search)", source: "GA4" as const, value: formatPct(bounceRate), changePercent: pct(bounceRate, bounceRatePrev), invertColors: true, data: spark(bounceDaily, 0) },
+    { label: "Avg. Session Duration (Organic Search)", source: "GA4" as const, value: formatDuration(avgDuration), changePercent: pct(avgDuration, avgDurationPrev), data: spark(durDaily, 0) },
+  ];
+
+  const layer2Cards = [
     { label: "Clicks (Total)", source: "GSC" as const, value: formatBig(totalClicks), changePercent: pct(totalClicks, totalClicksPrev), data: spark(gAll, 1) },
     { label: "Clicks (Branded)", source: "GSC" as const, value: formatBig(brandedClicks), changePercent: pct(brandedClicks, brandedClicksPrev), data: spark(gBranded, 1) },
     { label: "Clicks (Non-Branded)", source: "GSC" as const, value: formatBig(nbClicks), changePercent: pct(nbClicks, nbClicksPrev), data: spark(gNonBranded, 1) },
     { label: "CTR (Non-Branded)", source: "GSC" as const, value: formatPct(nbCtr), changePercent: pct(nbCtr, nbCtrPrev), data: spark(gNonBranded, 2) },
-    { label: "Bounce Rate (Organic Search)", source: "GA4" as const, value: formatPct(bounceRate), changePercent: pct(bounceRate, bounceRatePrev), invertColors: true, data: spark(bounceDaily, 0) },
-    { label: "Avg. Session Duration (Organic Search)", source: "GA4" as const, value: formatDuration(avgDuration), changePercent: pct(avgDuration, avgDurationPrev), data: spark(durDaily, 0) },
     { label: "AI Referral Traffic", source: "GA4" as const, value: formatBig(aiTotal), changePercent: pct(aiTotal, aiTotalPrev), data: spark(aiDaily, 0) },
     { label: "Direct Source Traffic", source: "GA4" as const, value: formatBig(directTotal), changePercent: pct(directTotal, directTotalPrev), data: spark(directDaily, 0) },
-    { label: `Events (${conversionEvents.length > 0 ? `${conversionEvents.length} selected` : "all"})`, source: "GA4" as const, value: formatBig(eventsTotal), changePercent: pct(eventsTotal, eventsTotalPrev), data: spark(eventsDaily, 0) },
+  ];
+
+  const layer3Cards = [
+    { label: `Organic Conversions (Events: ${conversionEvents.length > 0 ? `${conversionEvents.length} selected` : "all"})`, source: "GA4" as const, value: formatBig(eventsTotal), changePercent: pct(eventsTotal, eventsTotalPrev), data: spark(eventsDaily, 0) },
     { label: "Conversion Rate (Events / Users)", source: "GA4" as const, value: formatPct(conversionRate, 2), changePercent: pct(conversionRate, conversionRatePrev), data: spark(eventsDaily, 0) },
+  ];
+
+  const layers = [
+    {
+      title: "Layer #1: Leading Indicators",
+      description: "Ranged objectives based on historical trends and industry data.",
+      cards: layer1Cards,
+    },
+    {
+      title: "Layer #2: Outcome Ranges",
+      description: "Broad outcomes to continue to refine and track based on wide-factor results.",
+      cards: layer2Cards,
+    },
+    {
+      title: "Layer #3: Business Validation",
+      description: "Ultimate objectives to validate success and opportunity after designated time ranges.",
+      cards: layer3Cards,
+    },
   ];
 
   return (
@@ -274,13 +299,30 @@ export async function OverviewContent({ searchParams: sp, overviewHref, gscHref,
         </div>
       )}
 
-      <section className="max-w-[1400px] mx-auto px-6 mt-6">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
-          {cards.map((c) => (
-            <OverviewMetricCard key={c.label} {...c} />
-          ))}
-        </div>
-      </section>
+      {brandedTerms.length > 0 && (
+        <section className="max-w-[1400px] mx-auto px-6 mt-6">
+          <BrandedComparison
+            brandedImpressions={brandedImpressions}
+            nbImpressions={nbImpressions}
+            brandedClicks={brandedClicks}
+            nbClicks={nbClicks}
+          />
+        </section>
+      )}
+
+      {layers.map((layer) => (
+        <section key={layer.title} className="max-w-[1400px] mx-auto px-6 mt-8">
+          <div className="mb-3 border-b border-gray-300 pb-2">
+            <h2 className="text-2xl text-gray-900">{layer.title}</h2>
+            <p className="text-sm text-gray-500 not-italic">{layer.description}</p>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+            {layer.cards.map((c) => (
+              <OverviewMetricCard key={c.label} {...c} />
+            ))}
+          </div>
+        </section>
+      ))}
 
       <PresentationFooter generatedAt={new Date()} />
     </main>

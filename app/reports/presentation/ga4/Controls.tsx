@@ -114,6 +114,7 @@ export function Ga4Controls({
           values={localPageUrls}
           options={pageOptions}
           multi
+          substringMode
           onChange={(vs) => {
             setLocalPageUrls(vs);
             pushDebounced({ pageUrl: vs.length ? vs.join(",") : null });
