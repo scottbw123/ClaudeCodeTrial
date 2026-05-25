@@ -5,6 +5,7 @@ import { AI_SOURCES } from "@/lib/ai-sources";
 import { PresentationHeader } from "../components/Header";
 import { PresentationFooter } from "../components/Footer";
 import { UrlCell } from "../components/UrlCell";
+import { TableExport } from "../components/TableExport";
 import { AiControls } from "./Controls";
 
 function normalizePagesGa4(rows: Ga4Row[]): Ga4Row[] {
@@ -399,6 +400,7 @@ export async function AiContent({ searchParams: sp, overviewHref, gscHref, ga4Hr
       </section>
 
       <section className="max-w-[1400px] mx-auto px-6 mt-8 grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <TableExport title="Top Pages from AI Traffic">
         <div className="bg-white border border-gray-200 rounded-md overflow-hidden">
           <div className="px-4 pt-3 pb-2">
             <h3 className="text-base font-semibold text-gray-900">Top Pages from AI Traffic</h3>
@@ -457,6 +459,7 @@ export async function AiContent({ searchParams: sp, overviewHref, gscHref, ga4Hr
             </table>
           </div>
         </div>
+        </TableExport>
         <div className="bg-white border border-gray-200 rounded-md p-4">
           <h3 className="text-base font-semibold text-gray-900 mb-2">AI Sessions over Time (by source)</h3>
           <StackedBarBySource data={sourceWeeklyData} sources={allSourcesInOrder} />
@@ -464,6 +467,7 @@ export async function AiContent({ searchParams: sp, overviewHref, gscHref, ga4Hr
       </section>
 
       <section className="max-w-[1400px] mx-auto px-6 mt-8">
+        <TableExport title="AI Traffic Source">
         <div className="bg-white border border-gray-200 rounded-md overflow-hidden">
           <div className="px-5 pt-4 pb-2">
             <h3 className="text-xl font-bold text-gray-900">Traffic Source</h3>
@@ -503,6 +507,7 @@ export async function AiContent({ searchParams: sp, overviewHref, gscHref, ga4Hr
             </table>
           </div>
         </div>
+        </TableExport>
       </section>
 
       <section className="max-w-[1400px] mx-auto px-6 mt-8">
@@ -542,6 +547,7 @@ export async function AiContent({ searchParams: sp, overviewHref, gscHref, ga4Hr
               </p>
             </div>
           </div>
+          <TableExport title="AI Conversion Overview — Events">
           <div className="max-h-[360px] overflow-y-auto border border-gray-200 rounded-md">
             <table className="min-w-full text-sm">
               <thead className="bg-black text-white text-xs sticky top-0">
@@ -580,6 +586,7 @@ export async function AiContent({ searchParams: sp, overviewHref, gscHref, ga4Hr
               </tbody>
             </table>
           </div>
+          </TableExport>
         </div>
         <div className="bg-white border border-gray-200 rounded-md p-4">
           <h3 className="text-base font-semibold text-gray-900 mb-2">Events over Time</h3>

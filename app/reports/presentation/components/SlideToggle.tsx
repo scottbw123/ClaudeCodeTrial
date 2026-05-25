@@ -29,7 +29,11 @@ export function SlideToggle({
 
   useEffect(() => {
     const container = containerRef.current;
-    if (!container || idx < 0) return;
+    if (!container) return;
+    if (idx < 0) {
+      setHighlight(null); // custom range active → no preset looks selected
+      return;
+    }
     const measure = () => {
       const btns = container.querySelectorAll<HTMLButtonElement>(":scope > button");
       const btn = btns[idx];

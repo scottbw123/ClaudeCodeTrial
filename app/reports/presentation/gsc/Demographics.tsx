@@ -3,6 +3,7 @@
 import { Cell, Legend, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
 import { ComposableMap, Geographies, Geography, Sphere } from "react-simple-maps";
 import { ALPHA3_TO_NUMERIC } from "./country-codes";
+import { TableExport } from "../components/TableExport";
 
 const TOPOJSON_URL = "https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json";
 
@@ -88,6 +89,7 @@ export function DemographicsSection({
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div>
+          <TableExport title="Search Demographics — Devices">
           <div className="overflow-x-auto mb-4">
             <table className="min-w-full text-sm">
               <thead className="bg-black text-white text-xs">
@@ -131,6 +133,7 @@ export function DemographicsSection({
               </tbody>
             </table>
           </div>
+          </TableExport>
           <div className="h-80">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart margin={{ top: 8, right: 8, bottom: 8, left: 8 }}>
@@ -159,6 +162,7 @@ export function DemographicsSection({
         </div>
 
         <div>
+          <TableExport title="Search Demographics — Countries">
           <div className="overflow-x-auto max-h-72">
             <table className="min-w-full text-sm">
               <thead className="bg-black text-white text-xs sticky top-0">
@@ -185,6 +189,7 @@ export function DemographicsSection({
               </tbody>
             </table>
           </div>
+          </TableExport>
           <div className="mt-4 overflow-hidden">
             <ComposableMap
               projection="geoEqualEarth"
