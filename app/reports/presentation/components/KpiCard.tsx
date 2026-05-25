@@ -1,6 +1,7 @@
 "use client";
 
 import { Line, LineChart, ResponsiveContainer } from "recharts";
+import { ChartBox } from "./ChartBox";
 
 export interface KpiCardData {
   label: string;
@@ -24,13 +25,13 @@ export function KpiCard({ data }: { data: KpiCardData }) {
       <p className={`text-xs font-medium ${color} mt-1`}>
         {arrow} {Math.abs(data.changePercent * 100).toFixed(1)}%
       </p>
-      <div className="h-10 mt-1">
+      <ChartBox className="h-10 mt-1">
         <ResponsiveContainer width="100%" height="100%">
           <LineChart data={data.spark} margin={{ top: 2, right: 0, bottom: 0, left: 0 }}>
             <Line type="monotone" dataKey="value" stroke={stroke} strokeWidth={1.5} dot={false} />
           </LineChart>
         </ResponsiveContainer>
-      </div>
+      </ChartBox>
     </div>
   );
 }

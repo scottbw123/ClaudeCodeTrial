@@ -9,6 +9,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
+import { ChartBox } from "../components/ChartBox";
 
 export interface MetricSectionData {
   title: string;
@@ -64,7 +65,7 @@ export function MetricSection({ data }: { data: MetricSectionData }) {
         <p className="text-sm text-gray-500">{data.description}</p>
       </div>
 
-      <div className="h-64">
+      <ChartBox className="h-64">
         <ResponsiveContainer width="100%" height="100%">
           <LineChart data={series} margin={{ top: 8, right: 16, bottom: 0, left: 0 }}>
             <CartesianGrid stroke="#f3f4f6" strokeDasharray="3 3" />
@@ -83,7 +84,7 @@ export function MetricSection({ data }: { data: MetricSectionData }) {
             <Line type="monotone" dataKey="trend" stroke="#a78bfa" strokeWidth={1} dot={false} strokeDasharray="4 2" />
           </LineChart>
         </ResponsiveContainer>
-      </div>
+      </ChartBox>
 
       <div className="grid grid-cols-3 gap-3 mt-4">
         {data.callouts.map((c) => {
@@ -97,13 +98,13 @@ export function MetricSection({ data }: { data: MetricSectionData }) {
               <p className={`text-xs font-medium ${deltaColor(c.changePercent, data.invertColors)}`}>
                 {arrow} {Math.abs(c.changePercent * 100).toFixed(1)}%
               </p>
-              <div className="h-10 mt-1">
+              <ChartBox className="h-10 mt-1">
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart data={c.bars} margin={{ top: 2, right: 0, bottom: 0, left: 0 }}>
                     <Line type="monotone" dataKey="value" stroke="#7c3aed" strokeWidth={1.5} dot={false} />
                   </LineChart>
                 </ResponsiveContainer>
-              </div>
+              </ChartBox>
             </div>
           );
         })}

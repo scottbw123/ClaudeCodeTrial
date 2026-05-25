@@ -1,6 +1,7 @@
 "use client";
 
 import { Area, AreaChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { ChartBox } from "../components/ChartBox";
 
 export interface Sparkpoint {
   date: string;
@@ -40,7 +41,7 @@ export function OverviewMetricCard({
       <p className={`text-xs font-medium mt-1 ${color}`}>
         {arrow} {isFinite(changePercent) ? Math.abs(changePercent * 100).toFixed(1) : "0.0"}%
       </p>
-      <div className="h-16 mt-2">
+      <ChartBox className="h-16 mt-2">
         <ResponsiveContainer width="100%" height="100%">
           <AreaChart data={data} margin={{ top: 2, right: 0, bottom: 0, left: 0 }}>
             <defs>
@@ -59,7 +60,7 @@ export function OverviewMetricCard({
             <Area type="monotone" dataKey="value" stroke={stroke} strokeWidth={1.5} fill={`url(#grad-${label.replace(/[^a-zA-Z0-9]/g, "")})`} />
           </AreaChart>
         </ResponsiveContainer>
-      </div>
+      </ChartBox>
     </div>
   );
 }

@@ -16,6 +16,7 @@ import {
   YAxis,
 } from "recharts";
 import { colorForAiSource } from "@/lib/ai-sources";
+import { ChartBox } from "../components/ChartBox";
 
 function trendLine(points: { date: string; value: number }[]) {
   if (points.length === 0) return [];
@@ -34,7 +35,7 @@ function trendLine(points: { date: string; value: number }[]) {
 export function SessionsLineChart({ data }: { data: { date: string; value: number }[] }) {
   const series = trendLine(data);
   return (
-    <div className="h-80">
+    <ChartBox className="h-80">
       <ResponsiveContainer width="100%" height="100%">
         <LineChart data={series} margin={{ top: 8, right: 16, bottom: 0, left: 0 }}>
           <CartesianGrid stroke="#f3f4f6" strokeDasharray="3 3" />
@@ -45,7 +46,7 @@ export function SessionsLineChart({ data }: { data: { date: string; value: numbe
           <Line type="monotone" dataKey="trend" stroke="#d1d5db" strokeWidth={1} dot={false} strokeDasharray="4 2" />
         </LineChart>
       </ResponsiveContainer>
-    </div>
+    </ChartBox>
   );
 }
 
@@ -82,7 +83,7 @@ export function TopSourcesDonut({
     <div className="bg-white border border-gray-200 rounded-md p-4">
       <h3 className="text-center text-lg font-bold mb-2">Top Sources</h3>
       <div className="grid grid-cols-[1fr_auto] gap-4 items-center">
-        <div className="h-72 relative">
+        <ChartBox className="h-72 relative">
           <ResponsiveContainer width="100%" height="100%">
             <PieChart>
               <Pie
@@ -122,7 +123,7 @@ export function TopSourcesDonut({
             <p className="text-2xl font-bold tabular-nums">{new Intl.NumberFormat("en-US").format(totalValue)}</p>
             <p className={`text-xs font-medium ${color}`}>{arrow} {Math.abs(totalChange * 100).toFixed(1)}%</p>
           </div>
-        </div>
+        </ChartBox>
         <ul className="text-xs space-y-1 pr-2">
           {data.map((d) => (
             <li key={d.name} className="flex items-center gap-2 whitespace-nowrap">
@@ -144,7 +145,7 @@ export function StackedBarBySource({
   sources: string[];
 }) {
   return (
-    <div className="h-72">
+    <ChartBox className="h-72">
       <ResponsiveContainer width="100%" height="100%">
         <BarChart data={data} margin={{ top: 8, right: 8, bottom: 30, left: 0 }}>
           <CartesianGrid stroke="#f3f4f6" strokeDasharray="3 3" />
@@ -157,7 +158,7 @@ export function StackedBarBySource({
           ))}
         </BarChart>
       </ResponsiveContainer>
-    </div>
+    </ChartBox>
   );
 }
 
@@ -183,7 +184,7 @@ export function StackedBarByEvent({
           </li>
         ))}
       </ul>
-      <div className="flex-1 min-h-0">
+      <ChartBox className="flex-1 min-h-0">
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={data} margin={{ top: 8, right: 8, bottom: 30, left: 0 }}>
             <CartesianGrid stroke="#f3f4f6" strokeDasharray="3 3" />
@@ -195,7 +196,7 @@ export function StackedBarByEvent({
             ))}
           </BarChart>
         </ResponsiveContainer>
-      </div>
+      </ChartBox>
     </div>
   );
 }

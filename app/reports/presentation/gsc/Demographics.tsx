@@ -4,6 +4,7 @@ import { Cell, Legend, Pie, PieChart, ResponsiveContainer, Tooltip } from "recha
 import { ComposableMap, Geographies, Geography, Sphere } from "react-simple-maps";
 import { ALPHA3_TO_NUMERIC } from "./country-codes";
 import { TableExport } from "../components/TableExport";
+import { ChartBox } from "../components/ChartBox";
 
 const TOPOJSON_URL = "https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json";
 
@@ -134,7 +135,7 @@ export function DemographicsSection({
             </table>
           </div>
           </TableExport>
-          <div className="h-80">
+          <ChartBox className="h-80">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart margin={{ top: 8, right: 8, bottom: 8, left: 8 }}>
                 <Pie
@@ -158,7 +159,7 @@ export function DemographicsSection({
                 <Legend layout="vertical" verticalAlign="middle" align="right" wrapperStyle={{ paddingLeft: 16 }} />
               </PieChart>
             </ResponsiveContainer>
-          </div>
+          </ChartBox>
         </div>
 
         <div>
