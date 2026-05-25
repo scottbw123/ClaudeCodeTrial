@@ -40,6 +40,7 @@ export function DownloadPdfButton({ filename }: { filename: string }) {
 
       const header = document.querySelector("header") as HTMLElement | null;
       const main = document.querySelector("main") as HTMLElement | null;
+      const footer = document.querySelector("footer") as HTMLElement | null;
       if (!main) return;
 
       // Mutate only the cloned document html2canvas renders — the live page is
@@ -60,6 +61,7 @@ export function DownloadPdfButton({ filename }: { filename: string }) {
       const canvases: HTMLCanvasElement[] = [];
       if (header) canvases.push(await html2canvas(header, opts));
       canvases.push(await html2canvas(main, opts));
+      if (footer) canvases.push(await html2canvas(footer, opts));
 
       const width = Math.max(...canvases.map((c) => c.width));
       const totalHeight = canvases.reduce((s, c) => s + c.height, 0);
