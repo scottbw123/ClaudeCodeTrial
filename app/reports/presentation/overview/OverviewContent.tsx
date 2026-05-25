@@ -1,4 +1,4 @@
-import { queryGscMultiSiteRaw, listSites, escapeRegex, type GscFilter } from "@/lib/gsc";
+import { queryGscMultiSite, listSites } from "@/lib/gsc";
 import { listProperties, runReportMultiProperty, type Ga4Filter } from "@/lib/ga4";
 import { previousPeriod, rangeFromDays, daysBetween } from "@/lib/date-utils";
 import { AI_SOURCES } from "@/lib/ai-sources";
@@ -44,12 +44,24 @@ function formatGa4Date(yyyymmdd: string): string {
 
 interface DailyRow { date: string; values: number[] }
 
+// Routes through the SAME queryGscMultiSite path as the GSC tab so branded /
+// non-branded use identical filter construction (includingRegex / batched
+// excludingRegex) — no chance of divergence between the two pages.
 async function gscDailySeries(
-  siteUrls: string[], startDate: string, endDate: string, extraFilters: GscFilter[]
+  siteUrls: string[],
+  startDate: string,
+  endDate: string,
+  opts: { filterQueries?: string[]; filterQueriesExclude?: string[] } = {}
 ): Promise<DailyRow[]> {
   if (siteUrls.length === 0) return [];
-  const rows = await queryGscMultiSiteRaw({
-    siteUrls, startDate, endDate, dimensions: ["date"], rowLimit: 1000, filters: extraFilters,
+  const rows = await queryGscMultiSite({
+    siteUrls,
+    startDate,
+    endDate,
+    dimensions: ["date"],
+    rowLimit: 1000,
+    filterQueries: opts.filterQueries,
+    filterQueriesExclude: opts.filterQueriesExclude,
   });
   return rows
     .map((r) => ({ date: r.keys[0] ?? "", values: [r.impressions, r.clicks, r.ctr, r.position] }))
@@ -107,14 +119,6 @@ export async function OverviewContent({ searchParams: sp, overviewHref, gscHref,
   const brandedTerms = (sp.branded || "").split(",").map((s) => s.trim()).filter(Boolean);
   const conversionEvents = (sp.events || "").split(",").map((s) => s.trim()).filter(Boolean);
 
-  const brandedRegex = brandedTerms.length > 0 ? brandedTerms.map(escapeRegex).join("|") : "";
-  const brandedFilter: GscFilter[] = brandedRegex
-    ? [{ dimension: "query", operator: "includingRegex", expression: `(${brandedRegex})` }]
-    : [];
-  const nonBrandedFilter: GscFilter[] = brandedRegex
-    ? [{ dimension: "query", operator: "excludingRegex", expression: `(${brandedRegex})` }]
-    : [];
-
   const organicFilter: Ga4Filter[] = [{ fieldName: "sessionDefaultChannelGroup", value: "Organic Search" }];
   // AI Referral = AI sources arriving via referral medium specifically (not organic, etc.)
   const aiAllFilter: Ga4Filter[] = [
@@ -165,12 +169,12 @@ export async function OverviewContent({ searchParams: sp, overviewHref, gscHref,
         usersDaily, usersPrevDaily,
         aiEventsDaily, aiEventsPrevDaily,
       ] = await Promise.all([
-        gscDailySeries(siteUrls, range.startDate, range.endDate, []),
-        gscDailySeries(siteUrls, compareRange.startDate, compareRange.endDate, []),
-        gscDailySeries(siteUrls, range.startDate, range.endDate, brandedFilter),
-        gscDailySeries(siteUrls, compareRange.startDate, compareRange.endDate, brandedFilter),
-        gscDailySeries(siteUrls, range.startDate, range.endDate, nonBrandedFilter),
-        gscDailySeries(siteUrls, compareRange.startDate, compareRange.endDate, nonBrandedFilter),
+        gscDailySeries(siteUrls, range.startDate, range.endDate),
+        gscDailySeries(siteUrls, compareRange.startDate, compareRange.endDate),
+        gscDailySeries(siteUrls, range.startDate, range.endDate, { filterQueries: brandedTerms }),
+        gscDailySeries(siteUrls, compareRange.startDate, compareRange.endDate, { filterQueries: brandedTerms }),
+        gscDailySeries(siteUrls, range.startDate, range.endDate, { filterQueriesExclude: brandedTerms }),
+        gscDailySeries(siteUrls, compareRange.startDate, compareRange.endDate, { filterQueriesExclude: brandedTerms }),
         ga4DailySeries(propertyIds, range.startDate, range.endDate, "bounceRate", organicFilter),
         ga4DailySeries(propertyIds, compareRange.startDate, compareRange.endDate, "bounceRate", organicFilter),
         ga4DailySeries(propertyIds, range.startDate, range.endDate, "averageSessionDuration", organicFilter),
