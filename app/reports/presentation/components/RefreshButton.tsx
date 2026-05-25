@@ -9,6 +9,7 @@ export function RefreshButton() {
   return (
     <button
       type="button"
+      data-pdf-hide
       onClick={() => startTransition(() => router.refresh())}
       disabled={pending}
       className="inline-flex items-center gap-1.5 rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm hover:bg-gray-50 disabled:opacity-50"

@@ -92,7 +92,7 @@ export function OverviewControls({
   };
 
   return (
-    <section data-pdf-hide className="max-w-[1400px] mx-auto px-6 pt-6">
+    <section className="max-w-[1400px] mx-auto px-6 pt-6">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
         <Combobox
           label="Sites (multi-select)"
