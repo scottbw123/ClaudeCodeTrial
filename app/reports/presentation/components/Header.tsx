@@ -2,6 +2,7 @@ import { formatHumanDate } from "@/lib/date-utils";
 import { TabLink } from "./TabLink";
 import { TabNav } from "./TabNav";
 import { NavigationProvider } from "./NavigationContext";
+import { DownloadPdfButton } from "./DownloadPdfButton";
 
 export type PresentationTab = "gsc" | "ga4" | "ai" | "overview";
 
@@ -57,11 +58,14 @@ export function PresentationHeader({
           </TabNav>
         </NavigationProvider>
 
-        {/* Bottom-right: date range */}
-        <div className="justify-self-end inline-flex items-center gap-2 bg-black border border-neutral-800 px-3 py-1.5 text-sm">
-          <span className="tabular-nums">
-            {formatHumanDate(startDate)} – {formatHumanDate(endDate)}
-          </span>
+        {/* Bottom-right: date range + PDF export */}
+        <div className="justify-self-end inline-flex items-center gap-2">
+          <div className="inline-flex items-center gap-2 bg-black border border-neutral-800 px-3 py-1.5 text-sm">
+            <span className="tabular-nums">
+              {formatHumanDate(startDate)} – {formatHumanDate(endDate)}
+            </span>
+          </div>
+          <DownloadPdfButton filename={`omniflow-${activeTab}-report`} />
         </div>
       </div>
     </header>
