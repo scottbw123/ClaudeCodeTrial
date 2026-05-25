@@ -42,17 +42,17 @@ function Calendar({
   onMonthChange,
   selectedStart,
   selectedEnd,
-  hoverDate,
+  maxDate,
+  picks,
   onPick,
-  onHover,
 }: {
   visibleMonth: Date;
   onMonthChange: (delta: number) => void;
   selectedStart: Date | null;
   selectedEnd: Date | null;
-  hoverDate: Date | null;
+  maxDate: Date;
+  picks: "start" | "end";
   onPick: (d: Date) => void;
-  onHover: (d: Date | null) => void;
 }) {
   const year = visibleMonth.getFullYear();
   const month = visibleMonth.getMonth();
@@ -61,52 +61,31 @@ function Calendar({
   const cells: (Date | null)[] = [];
   for (let i = 0; i < firstDow; i++) cells.push(null);
   for (let d = 1; d <= totalDays; d++) cells.push(new Date(year, month, d));
-  while (cells.length % 7 !== 0) cells.push(null);
   while (cells.length < 42) cells.push(null);
 
   const startMs = selectedStart?.getTime();
   const endMs = selectedEnd?.getTime();
-  const hoverMs = hoverDate?.getTime();
-
-  // For the "in range" highlight while user is picking the end date
-  const previewEnd = !selectedEnd && hoverDate && selectedStart && hoverMs! >= startMs! ? hoverDate : selectedEnd;
-  const previewEndMs = previewEnd?.getTime();
 
   return (
     <div className="w-64">
       <div className="flex items-center justify-between mb-2">
-        <button
-          type="button"
-          onClick={() => onMonthChange(-1)}
-          className="px-2 py-1 text-sm hover:bg-gray-100"
-          aria-label="Previous month"
-        >
-          ‹
-        </button>
+        <button type="button" onClick={() => onMonthChange(-1)} className="px-2 py-1 text-sm hover:bg-gray-100" aria-label="Previous month">‹</button>
         <div className="text-sm font-medium not-italic">{monthLabel(visibleMonth)}</div>
-        <button
-          type="button"
-          onClick={() => onMonthChange(1)}
-          className="px-2 py-1 text-sm hover:bg-gray-100"
-          aria-label="Next month"
-        >
-          ›
-        </button>
+        <button type="button" onClick={() => onMonthChange(1)} className="px-2 py-1 text-sm hover:bg-gray-100" aria-label="Next month">›</button>
       </div>
       <div className="grid grid-cols-7 gap-px text-center text-[10px] uppercase tracking-wide text-gray-400 mb-1 not-italic">
-        {WEEKDAYS.map((d, i) => (
-          <div key={i}>{d}</div>
-        ))}
+        {WEEKDAYS.map((d, i) => <div key={i}>{d}</div>)}
       </div>
       <div className="grid grid-cols-7 gap-px">
         {cells.map((c, i) => {
           if (!c) return <div key={i} />;
           const ms = c.getTime();
-          const isStart = startMs === ms;
-          const isEnd = endMs === ms;
-          const inRange =
-            startMs && previewEndMs && ms > startMs && ms < previewEndMs;
-          const bg = isStart || isEnd
+          const disabled = ms > maxDate.getTime();
+          const isThisPick = picks === "start" ? startMs === ms : endMs === ms;
+          const inRange = startMs && endMs && ms >= startMs && ms <= endMs;
+          const bg = disabled
+            ? "text-gray-300 cursor-not-allowed"
+            : isThisPick
             ? "bg-black text-white"
             : inRange
             ? "bg-gray-200 text-gray-900"
@@ -115,9 +94,8 @@ function Calendar({
             <button
               key={i}
               type="button"
-              onClick={() => onPick(c)}
-              onMouseEnter={() => onHover(c)}
-              onMouseLeave={() => onHover(null)}
+              disabled={disabled}
+              onClick={() => !disabled && onPick(c)}
               className={`h-7 text-xs tabular-nums transition-colors ${bg}`}
             >
               {c.getDate()}
@@ -132,30 +110,37 @@ function Calendar({
 export function DateRangePicker({ startDate, endDate, onApply }: Props) {
   const [open, setOpen] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
+  const maxDate = (() => {
+    const d = new Date();
+    d.setDate(d.getDate() - 1);
+    d.setHours(0, 0, 0, 0);
+    return d;
+  })();
 
-  // Staged values inside the popup
   const [stagedStart, setStagedStart] = useState<Date | null>(fromIso(startDate));
   const [stagedEnd, setStagedEnd] = useState<Date | null>(fromIso(endDate));
-  const [hoverDate, setHoverDate] = useState<Date | null>(null);
   const [leftMonth, setLeftMonth] = useState<Date>(() => {
     const d = fromIso(startDate) ?? new Date();
     return new Date(d.getFullYear(), d.getMonth(), 1);
   });
+  const [rightMonth, setRightMonth] = useState<Date>(() => {
+    const d = fromIso(endDate) ?? new Date();
+    return new Date(d.getFullYear(), d.getMonth(), 1);
+  });
 
   useEffect(() => {
-    if (open) {
-      setStagedStart(fromIso(startDate));
-      setStagedEnd(fromIso(endDate));
-      const d = fromIso(startDate) ?? new Date();
-      setLeftMonth(new Date(d.getFullYear(), d.getMonth(), 1));
-    }
+    if (!open) return;
+    setStagedStart(fromIso(startDate));
+    setStagedEnd(fromIso(endDate));
+    const s = fromIso(startDate) ?? new Date();
+    const e = fromIso(endDate) ?? new Date();
+    setLeftMonth(new Date(s.getFullYear(), s.getMonth(), 1));
+    setRightMonth(new Date(e.getFullYear(), e.getMonth(), 1));
   }, [open, startDate, endDate]);
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
-      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) {
-        setOpen(false);
-      }
+      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) setOpen(false);
     }
     if (open) {
       document.addEventListener("mousedown", handleClickOutside);
@@ -163,31 +148,17 @@ export function DateRangePicker({ startDate, endDate, onApply }: Props) {
     }
   }, [open]);
 
-  function pick(d: Date) {
-    if (!stagedStart || (stagedStart && stagedEnd)) {
-      setStagedStart(d);
-      setStagedEnd(null);
-      return;
-    }
-    if (d < stagedStart) {
-      setStagedStart(d);
-      setStagedEnd(null);
-      return;
-    }
-    setStagedEnd(d);
-  }
-
   function applyAndClose() {
     if (stagedStart && stagedEnd) {
-      onApply(toIso(stagedStart), toIso(stagedEnd));
+      const s = stagedStart <= stagedEnd ? stagedStart : stagedEnd;
+      const e = stagedStart <= stagedEnd ? stagedEnd : stagedStart;
+      onApply(toIso(s), toIso(e));
     }
     setOpen(false);
   }
 
-  const triggerLabel =
-    startDate && endDate
-      ? `${startDate} → ${endDate}`
-      : "Pick a custom range";
+  const valid = stagedStart && stagedEnd && stagedStart <= stagedEnd;
+  const triggerLabel = startDate && endDate ? `${startDate} → ${endDate}` : "Pick a custom range";
 
   return (
     <div ref={wrapRef} className="relative inline-block">
@@ -200,44 +171,43 @@ export function DateRangePicker({ startDate, endDate, onApply }: Props) {
       </button>
       {open && (
         <div className="absolute top-full right-0 mt-1 z-50 bg-white border border-gray-300 shadow-xl p-4">
-          <div className="flex gap-4">
-            <Calendar
-              visibleMonth={leftMonth}
-              onMonthChange={(delta) => setLeftMonth(addMonths(leftMonth, delta))}
-              selectedStart={stagedStart}
-              selectedEnd={stagedEnd}
-              hoverDate={hoverDate}
-              onPick={pick}
-              onHover={setHoverDate}
-            />
-            <Calendar
-              visibleMonth={addMonths(leftMonth, 1)}
-              onMonthChange={(delta) => setLeftMonth(addMonths(leftMonth, delta))}
-              selectedStart={stagedStart}
-              selectedEnd={stagedEnd}
-              hoverDate={hoverDate}
-              onPick={pick}
-              onHover={setHoverDate}
-            />
+          <div className="flex gap-6">
+            <div>
+              <div className="text-[10px] uppercase tracking-wide text-gray-500 mb-2 not-italic font-semibold">Start date</div>
+              <Calendar
+                visibleMonth={leftMonth}
+                onMonthChange={(delta) => setLeftMonth(addMonths(leftMonth, delta))}
+                selectedStart={stagedStart}
+                selectedEnd={stagedEnd}
+                maxDate={maxDate}
+                picks="start"
+                onPick={(d) => setStagedStart(d)}
+              />
+            </div>
+            <div>
+              <div className="text-[10px] uppercase tracking-wide text-gray-500 mb-2 not-italic font-semibold">End date</div>
+              <Calendar
+                visibleMonth={rightMonth}
+                onMonthChange={(delta) => setRightMonth(addMonths(rightMonth, delta))}
+                selectedStart={stagedStart}
+                selectedEnd={stagedEnd}
+                maxDate={maxDate}
+                picks="end"
+                onPick={(d) => setStagedEnd(d)}
+              />
+            </div>
           </div>
           <div className="flex items-center justify-between mt-4 pt-3 border-t border-gray-100">
             <span className="text-xs text-gray-500 tabular-nums">
-              {stagedStart ? toIso(stagedStart) : "Select start"}
-              {" → "}
-              {stagedEnd ? toIso(stagedEnd) : "Select end"}
+              {stagedStart ? toIso(stagedStart) : "Select start"} → {stagedEnd ? toIso(stagedEnd) : "Select end"}
+              {stagedStart && stagedEnd && !valid && <span className="text-rose-600 ml-2">end is before start</span>}
             </span>
             <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={() => setOpen(false)}
-                className="text-xs px-3 py-1.5 text-gray-600 hover:text-gray-900"
-              >
-                Cancel
-              </button>
+              <button type="button" onClick={() => setOpen(false)} className="text-xs px-3 py-1.5 text-gray-600 hover:text-gray-900">Cancel</button>
               <button
                 type="button"
                 onClick={applyAndClose}
-                disabled={!stagedStart || !stagedEnd}
+                disabled={!valid}
                 className="text-xs px-3 py-1.5 bg-black text-white hover:bg-gray-800 disabled:opacity-50"
               >
                 Done

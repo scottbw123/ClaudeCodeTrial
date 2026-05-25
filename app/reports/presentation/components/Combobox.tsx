@@ -53,8 +53,19 @@ export function Combobox({
     ? options.filter((o) => o.toLowerCase().includes(lowerSearch))
     : options;
 
-  const includeSet = new Set(values);
-  const excludeSet = new Set(excludeValues);
+  function matchAny(opt: string, patterns: string[]): boolean {
+    const lower = opt.toLowerCase();
+    if (substringMode) return patterns.some((p) => lower.includes(p.toLowerCase()));
+    return patterns.some((p) => p.toLowerCase() === lower);
+  }
+
+  // Effective population: an option is "in" if it isn't excluded and either there
+  // are no include patterns (everything in by default) or it matches an include.
+  function inPopulation(opt: string): boolean {
+    if (matchAny(opt, excludeValues)) return false;
+    if (values.length === 0) return true;
+    return matchAny(opt, values);
+  }
 
   function toggle(opt: string) {
     if (!multi) {
@@ -63,21 +74,29 @@ export function Combobox({
       setSearch("");
       return;
     }
-    if (includeSet.has(opt)) {
-      onChange(values.filter((v) => v !== opt), excludeValues);
+    if (inPopulation(opt)) {
+      // Remove from the population → exclude this exact option (and drop any exact include).
+      onChange(
+        values.filter((v) => v !== opt),
+        Array.from(new Set([...excludeValues, opt]))
+      );
     } else {
-      onChange([...values, opt], excludeValues.filter((v) => v !== opt));
+      // Add to the population → include this exact option (and drop any exact exclude).
+      onChange(
+        Array.from(new Set([...values, opt])),
+        excludeValues.filter((v) => v !== opt)
+      );
     }
   }
 
   function addInclude(term: string) {
-    const next = includeSet.has(term) ? values : [...values, term];
+    const next = values.includes(term) ? values : [...values, term];
     const nextExc = excludeValues.filter((v) => v !== term);
     onChange(next, nextExc);
   }
 
   function addExclude(term: string) {
-    const nextExc = excludeSet.has(term) ? excludeValues : [...excludeValues, term];
+    const nextExc = excludeValues.includes(term) ? excludeValues : [...excludeValues, term];
     const next = values.filter((v) => v !== term);
     onChange(next, nextExc);
   }
@@ -244,8 +263,8 @@ export function Combobox({
               <div className="px-3 py-3 text-sm text-gray-400">No matches</div>
             ) : (
               filtered.slice(0, RENDER_CAP).map((o) => {
-                const isInc = includeSet.has(o);
-                const isExc = excludeSet.has(o);
+                const isInc = inPopulation(o);
+                const isExc = matchAny(o, excludeValues);
                 return (
                   <div key={o} className="group flex items-stretch hover:bg-gray-50">
                     <label

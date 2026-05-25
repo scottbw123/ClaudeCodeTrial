@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { UrlCell } from "../components/UrlCell";
+import { TableExport } from "../components/TableExport";
 
 export interface DeltaRow {
   key: string;
@@ -119,6 +120,7 @@ export function DeltaTable({
   });
 
   return (
+    <TableExport title={title}>
     <section className="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
       <div className="px-5 pt-4 pb-2">
         <h3 className="text-xl font-bold text-gray-900">{title}</h3>
@@ -178,5 +180,6 @@ export function DeltaTable({
         </table>
       </div>
     </section>
+    </TableExport>
   );
 }

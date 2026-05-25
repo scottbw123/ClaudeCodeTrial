@@ -3,6 +3,7 @@
 import { useState } from "react";
 import type { Ga4Row } from "@/lib/ga4";
 import { UrlCell } from "../components/UrlCell";
+import { TableExport } from "../components/TableExport";
 
 function fmtInt(n: number): string {
   return new Intl.NumberFormat("en-US").format(Math.round(n));
@@ -89,6 +90,7 @@ function SortableTable({ title, description, columns, rows }: SortableTableProps
   }
 
   return (
+    <TableExport title={title}>
     <section className="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
       <div className="px-5 pt-4 pb-2">
         <h3 className="text-xl font-bold text-gray-900">{title}</h3>
@@ -137,6 +139,7 @@ function SortableTable({ title, description, columns, rows }: SortableTableProps
         </table>
       </div>
     </section>
+    </TableExport>
   );
 }
 
