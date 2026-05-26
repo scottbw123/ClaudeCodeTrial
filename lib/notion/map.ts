@@ -6,6 +6,7 @@ import {
   readEmail,
   readMultiSelect,
   readNumber,
+  readPlainText,
   readRelationIds,
   readRichText,
   readSelect,
@@ -51,12 +52,12 @@ export function mapProductStatusToStage(raw: string | null): ClientStage {
   return "in_progress";
 }
 
-/** Statuses where the client is the actor we're waiting on. */
-function clientIsBlocking(rawStatus: string | null, requiresInput: string | null): boolean {
-  if (requiresInput && requiresInput.toLowerCase().includes("client")) return true;
-  if (!rawStatus) return false;
-  const s = rawStatus.toLowerCase();
-  return s.includes("client") && (s.includes("review") || s.includes("qc") || s.includes("writing"));
+/**
+ * An order needs the client's review when its "Status Collation" value mentions
+ * the client (e.g. "Client Review"). Defined by the team's workflow.
+ */
+function needsClientReview(page: NotionPage): boolean {
+  return readPlainText(page, props.task.statusCollation).toLowerCase().includes("client");
 }
 
 export function mapClient(page: NotionPage): ClientRecord {
@@ -97,7 +98,6 @@ export interface MapTaskContext {
 
 export function mapTask(page: NotionPage, ctx: MapTaskContext = {}): Task {
   const rawStatus = readStatus(page, props.task.status);
-  const requiresInput = readSelect(page, props.task.requiresInput);
   const projectId = readRelationIds(page, props.task.project)[0] ?? null;
   const skuId = readRelationIds(page, props.task.sku)[0] ?? null;
   const taskId = readNumber(page, props.task.taskId);
@@ -124,7 +124,7 @@ export function mapTask(page: NotionPage, ctx: MapTaskContext = {}): Task {
     category,
     sku,
     deliveryId: taskId != null ? `WO-${taskId}` : null,
-    needsClientInput: clientIsBlocking(rawStatus, requiresInput),
+    needsClientInput: needsClientReview(page),
     clientDeliveryUrl: readUrl(page, props.task.clientDeliveryUrl),
   };
 }

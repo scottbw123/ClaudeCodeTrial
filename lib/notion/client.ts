@@ -41,8 +41,8 @@ async function notionFetch<T>(
       "Content-Type": "application/json",
       ...(init.headers ?? {}),
     },
-    // Always hit Notion live; the dashboard reflects current delivery state.
-    cache: "no-store",
+    // Caching is handled at the data-access layer via unstable_cache; the raw
+    // fetch stays uncached (Next's default) so it doesn't fight that layer.
   });
 
   if (!res.ok) {

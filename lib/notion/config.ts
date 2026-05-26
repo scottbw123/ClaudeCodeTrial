@@ -72,6 +72,8 @@ export const props = {
     softrFeedback: "Softr Feedback",
     taskId: "Task ID", // rendered as the "Delivery ID" (WO-####)
     sku: "SKUs", // relation -> SKU catalog; resolved to a title
+    // "To review" = this property's text contains "Client".
+    statusCollation: "Status Collation",
     // Best-effort source for the list "category" column; refine once live.
     category: "Target Category",
     label: "Label",

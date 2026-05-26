@@ -11,8 +11,18 @@
   --color-ink: #1b1b2b;
 
   /* Fonts */
-  --font-sans: var(--font-inter), ui-sans-serif, system-ui, -apple-system, sans-serif;
-  --font-serif: var(--font-playfair), Georgia, "Times New Roman", serif;
+  --font-sans: var(--font-montserrat), ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-serif: var(--font-cormorant), Georgia, "Times New Roman", serif;
+
+  /* No corner rounding (square design) — keep rounded-full for avatars. */
+  --radius-xs: 0px;
+  --radius-sm: 0px;
+  --radius-md: 0px;
+  --radius-lg: 0px;
+  --radius-xl: 0px;
+  --radius-2xl: 0px;
+  --radius-3xl: 0px;
+  --radius-4xl: 0px;
 }
 
 :root {
@@ -26,8 +36,14 @@ body {
   font-family: var(--font-sans);
 }
 
-/* Serif display utility for headings, matching the portal design language. */
+/* Catch the bare `rounded` utility too (rounded-full is unaffected). */
+.rounded {
+  border-radius: 0;
+}
+
+/* Serif display headings — Cormorant Garamond, bold. */
 .font-display {
   font-family: var(--font-serif);
-  letter-spacing: -0.01em;
+  font-weight: 700;
+  letter-spacing: -0.005em;
 }

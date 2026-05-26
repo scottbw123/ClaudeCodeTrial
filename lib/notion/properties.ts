@@ -88,6 +88,56 @@ export function readUrl(page: NotionPage, name: string): string | null {
   return (p as { url?: string | null }).url ?? null;
 }
 
+/**
+ * Best-effort plain-text value for a property, regardless of type (formula,
+ * rollup, select, status, rich_text, …). Used for fields like "Status
+ * Collation" whose underlying type we don't want to hard-code.
+ */
+export function readPlainText(page: NotionPage, name: string): string {
+  const p = prop(page, name);
+  if (!p) return "";
+  switch (p.type) {
+    case "formula": {
+      const f = (p as { formula?: { type: string; string?: string; number?: number; boolean?: boolean; date?: { start?: string } } }).formula;
+      if (!f) return "";
+      if (f.type === "string") return f.string ?? "";
+      if (f.type === "number") return f.number != null ? String(f.number) : "";
+      if (f.type === "boolean") return f.boolean != null ? String(f.boolean) : "";
+      if (f.type === "date") return f.date?.start ?? "";
+      return "";
+    }
+    case "rich_text":
+      return ((p as { rich_text?: { plain_text?: string }[] }).rich_text ?? [])
+        .map((t) => t.plain_text ?? "")
+        .join("");
+    case "title":
+      return ((p as { title?: { plain_text?: string }[] }).title ?? [])
+        .map((t) => t.plain_text ?? "")
+        .join("");
+    case "select":
+      return (p as { select?: { name?: string } | null }).select?.name ?? "";
+    case "status":
+      return (p as { status?: { name?: string } | null }).status?.name ?? "";
+    case "multi_select":
+      return ((p as { multi_select?: { name?: string }[] }).multi_select ?? [])
+        .map((o) => o.name ?? "")
+        .join(", ");
+    case "rollup": {
+      const r = (p as { rollup?: { type: string; number?: number; array?: { type: string; name?: string }[] } }).rollup;
+      if (!r) return "";
+      if (r.type === "number") return r.number != null ? String(r.number) : "";
+      if (r.type === "array") {
+        return (r.array ?? [])
+          .map((item) => (item as { name?: string }).name ?? "")
+          .join(", ");
+      }
+      return "";
+    }
+    default:
+      return "";
+  }
+}
+
 /** Returns the related page ids for a relation property. */
 export function readRelationIds(page: NotionPage, name: string): string[] {
   const p = prop(page, name);

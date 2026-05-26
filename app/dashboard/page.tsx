@@ -81,7 +81,7 @@ export default async function OverviewPage() {
                 {toReview.slice(0, 6).map((t) => (
                   <Link
                     key={t.id}
-                    href={`/dashboard/orders/${t.id}`}
+                    href={`/dashboard/orders?open=${t.id}`}
                     className="flex items-center justify-between gap-4 px-5 py-3.5 hover:bg-gray-50 transition-colors"
                   >
                     <div className="min-w-0">

@@ -1,8 +1,9 @@
 "use client";
 
-import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import type { Task } from "@/lib/notion/types";
+import { OrderDrawer } from "./_components/order-drawer";
 
 type Tab = "review" | "in_progress" | "all";
 
@@ -19,12 +20,25 @@ function tabFilter(tab: Tab, t: Task): boolean {
 }
 
 export function OrdersView({ tasks }: { tasks: Task[] }) {
+  const searchParams = useSearchParams();
   const [tab, setTab] = useState<Tab>("review");
   const [view, setView] = useState<"list" | "calendar">("list");
   const [expanded, setExpanded] = useState<string | null>(null);
   const [limit, setLimit] = useState(5);
   const [approving, setApproving] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+
+  // Deep-link / overview link can request a specific order drawer via ?open=.
+  useEffect(() => {
+    const open = searchParams.get("open");
+    if (open) setSelectedId(open);
+  }, [searchParams]);
+
+  const selectedTask = useMemo(
+    () => tasks.find((t) => t.id === selectedId) ?? null,
+    [tasks, selectedId],
+  );
 
   const reviewCount = useMemo(() => tasks.filter((t) => t.needsClientInput).length, [tasks]);
   const filtered = useMemo(() => tasks.filter((t) => tabFilter(tab, t)), [tasks, tab]);
@@ -116,12 +130,12 @@ export function OrdersView({ tasks }: { tasks: Task[] }) {
                 <div className="w-48 shrink-0 text-sm text-gray-500">{t.category ?? "—"}</div>
                 <div className="flex-1 min-w-0 font-medium text-ink truncate">{t.name}</div>
                 <div className="w-24 shrink-0 text-sm text-gray-500">{formatDate(t.dueDate)}</div>
-                <Link
-                  href={`/dashboard/orders/${t.id}`}
-                  className="rounded-md bg-brand px-4 py-1.5 text-sm font-semibold text-white hover:bg-brand-hover transition-colors"
+                <button
+                  onClick={() => setSelectedId(t.id)}
+                  className="bg-brand px-4 py-1.5 text-sm font-semibold text-white hover:bg-brand-hover transition-colors"
                 >
                   Review
-                </Link>
+                </button>
                 <button
                   onClick={() => quickApprove(t.id)}
                   disabled={approving === t.id}
@@ -166,6 +180,8 @@ export function OrdersView({ tasks }: { tasks: Task[] }) {
           )}
         </div>
       )}
+
+      <OrderDrawer task={selectedTask} onClose={() => setSelectedId(null)} />
     </div>
   );
 }
