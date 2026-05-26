@@ -13,7 +13,7 @@ import {
   readTitle,
   readUrl,
 } from "./properties";
-import type { ClientRecord, ClientStage, Project, Task } from "./types";
+import type { ClientRecord, ClientStage, Contact, Project, Task } from "./types";
 
 /**
  * Collapse the ~80-value internal "Product Status ⚡" workflow into the small
@@ -68,6 +68,9 @@ export function mapClient(page: NotionPage): ClientRecord {
     statuses: readMultiSelect(page, props.client.status),
     workTypes: readMultiSelect(page, props.client.workType),
     website: readUrl(page, props.client.website),
+    lookerReport: readUrl(page, props.client.lookerReport),
+    clientFolder: readUrl(page, props.client.clientFolder),
+    campaignManagerId: readRelationIds(page, props.client.campaignManager)[0] ?? null,
     approvalPrefs: {
       skipContentApproval: readCheckbox(page, props.client.skipContentApproval),
       skipContentStrategyApproval: readCheckbox(
@@ -78,13 +81,36 @@ export function mapClient(page: NotionPage): ClientRecord {
   };
 }
 
-export function mapTask(
-  page: NotionPage,
-  projectNames: Map<string, string> = new Map(),
-): Task {
+export function mapContact(page: NotionPage): Contact {
+  return {
+    name: readTitle(page, props.team.name) || "Your team",
+    role: readSelect(page, props.team.position),
+    email: readEmail(page, props.team.email),
+    bookingUrl: readUrl(page, props.team.calendly),
+  };
+}
+
+export interface MapTaskContext {
+  projectNames?: Map<string, string>;
+  skuNames?: Map<string, string>;
+}
+
+export function mapTask(page: NotionPage, ctx: MapTaskContext = {}): Task {
   const rawStatus = readStatus(page, props.task.status);
   const requiresInput = readSelect(page, props.task.requiresInput);
   const projectId = readRelationIds(page, props.task.project)[0] ?? null;
+  const skuId = readRelationIds(page, props.task.sku)[0] ?? null;
+  const taskId = readNumber(page, props.task.taskId);
+  const projectName = projectId ? (ctx.projectNames?.get(projectId) ?? null) : null;
+  const sku = skuId ? (ctx.skuNames?.get(skuId) ?? null) : null;
+
+  // "Category" source is best-effort until confirmed; degrade sensibly.
+  const category =
+    readSelect(page, props.task.category) ||
+    readRichText(page, props.task.category) ||
+    readRichText(page, props.task.label) ||
+    sku ||
+    projectName;
 
   return {
     id: page.id,
@@ -94,7 +120,10 @@ export function mapTask(
     dueDate: readDate(page, props.task.dueDate),
     startDate: readDate(page, props.task.startDate),
     projectId,
-    projectName: projectId ? (projectNames.get(projectId) ?? null) : null,
+    projectName,
+    category,
+    sku,
+    deliveryId: taskId != null ? `WO-${taskId}` : null,
     needsClientInput: clientIsBlocking(rawStatus, requiresInput),
     clientDeliveryUrl: readUrl(page, props.task.clientDeliveryUrl),
   };

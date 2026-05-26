@@ -16,6 +16,17 @@ export function readTitle(page: NotionPage, name: string): string {
   return arr.map((t) => t.plain_text ?? "").join("").trim();
 }
 
+/** Read the title regardless of the property's name (each DB names it differently). */
+export function readTitleAuto(page: NotionPage): string {
+  for (const p of Object.values(page.properties ?? {})) {
+    if (p?.type === "title") {
+      const arr = (p as { title?: { plain_text?: string }[] }).title ?? [];
+      return arr.map((t) => t.plain_text ?? "").join("").trim();
+    }
+  }
+  return "";
+}
+
 export function readRichText(page: NotionPage, name: string): string {
   const p = prop(page, name);
   if (!p || p.type !== "rich_text") return "";

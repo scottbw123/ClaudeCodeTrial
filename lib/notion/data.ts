@@ -1,9 +1,19 @@
 import { cache } from "react";
 import { notionConfig, props } from "./config";
 import { getPage, queryDataSource } from "./client";
-import { mapClient, mapProject, mapTask } from "./map";
-import { readRelationIds } from "./properties";
-import type { ClientRecord, DashboardData, Project, Task } from "./types";
+import { mapClient, mapContact, mapProject, mapTask } from "./map";
+import { readRelationIds, readTitleAuto } from "./properties";
+import type { Contact, ClientRecord, DashboardData, Project, Resource, Task } from "./types";
+
+/** id -> title map for a data source, used to resolve relation labels cheaply. */
+const getTitleMap = cache(async (dataSourceId: string): Promise<Map<string, string>> => {
+  try {
+    const pages = await queryDataSource(dataSourceId, { pageSize: 100, maxPages: 5 });
+    return new Map(pages.map((p) => [p.id, readTitleAuto(p)]));
+  } catch {
+    return new Map();
+  }
+});
 
 /**
  * All reads are scoped to a single client via Notion relation filters. The
@@ -54,7 +64,7 @@ export const getProjectsForClient = cache(
 
 export const getTasksForClient = cache(
   async (clientPageId: string): Promise<Task[]> => {
-    const [taskPages, projects] = await Promise.all([
+    const [taskPages, projects, skuNames] = await Promise.all([
       queryDataSource(notionConfig.dataSources.tasks, {
         filter: {
           property: props.task.client,
@@ -62,12 +72,34 @@ export const getTasksForClient = cache(
         },
       }),
       getProjectsForClient(clientPageId),
+      getTitleMap(notionConfig.dataSources.skus),
     ]);
 
     const projectNames = new Map(projects.map((p) => [p.id, p.name]));
-    return taskPages.map((page) => mapTask(page, projectNames));
+    return taskPages.map((page) => mapTask(page, { projectNames, skuNames }));
   },
 );
+
+/** The client's primary contact (campaign manager) for the "Contact" card. */
+export const getClientContact = cache(
+  async (client: ClientRecord): Promise<Contact | null> => {
+    if (!client.campaignManagerId) return null;
+    try {
+      return mapContact(await getPage(client.campaignManagerId));
+    } catch {
+      return null;
+    }
+  },
+);
+
+/** Curated resource links shown on the overview. */
+export function getClientResources(client: ClientRecord): Resource[] {
+  const resources: Resource[] = [];
+  if (client.clientFolder) resources.push({ label: "View Campaign Folder", url: client.clientFolder });
+  if (client.lookerReport) resources.push({ label: "Analytics Report", url: client.lookerReport });
+  if (client.website) resources.push({ label: "Your Website", url: client.website });
+  return resources;
+}
 
 /**
  * Fetch a single task ONLY if it belongs to the given client. Returns null

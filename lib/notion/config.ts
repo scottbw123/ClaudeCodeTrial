@@ -20,10 +20,14 @@ export const notionConfig = {
   dataSources: {
     /** CRM — one page per client (Company, Contact Email, approval prefs, …). */
     clients: process.env.NOTION_DS_CRM ?? "ec316d3a-aab7-4e1a-a5d5-47b53609f0cb",
-    /** Aggregated Fulfillment — the unified deliverables/tasks table. */
+    /** Aggregated Fulfillment — the unified deliverables/tasks ("orders") table. */
     tasks: process.env.NOTION_DS_TASKS ?? "2ea366b4-3c25-8160-b1c2-000bea383912",
     /** Projects — groupings of deliverables. */
     projects: process.env.NOTION_DS_PROJECTS ?? "703f1b14-04fa-40c2-80f1-418e4db49eb8",
+    /** Team Roster — campaign managers / strategists (the client's contacts). */
+    team: process.env.NOTION_DS_TEAM ?? "2a105b9e-f9b7-4365-b22f-2f349f7f5111",
+    /** SKU catalog — product names referenced by orders. */
+    skus: process.env.NOTION_DS_SKUS ?? "0f384c80-19db-4f18-83d7-43a1004b47b3",
   },
 
   // Not yet wired, but discovered and reserved for upcoming phases:
@@ -45,7 +49,9 @@ export const props = {
     workType: "Work Type",
     website: "Website",
     lookerReport: "Looker Report",
+    clientFolder: "Client Folder",
     monthlyBudget: "Monthly Budget",
+    campaignManager: "Campaign Manager",
     skipContentApproval: "Skip Content Approval",
     skipContentStrategyApproval: "Skip Content Strategy Approval",
     projects: "Projects",
@@ -64,6 +70,17 @@ export const props = {
     primaryKeyword: "Primary Keyword",
     softrApproval: "Softr Approval",
     softrFeedback: "Softr Feedback",
+    taskId: "Task ID", // rendered as the "Delivery ID" (WO-####)
+    sku: "SKUs", // relation -> SKU catalog; resolved to a title
+    // Best-effort source for the list "category" column; refine once live.
+    category: "Target Category",
+    label: "Label",
+  },
+  team: {
+    name: "Name",
+    position: "Position",
+    email: "Client-Facing Email",
+    calendly: "Personal Calendly",
   },
   project: {
     name: "Project name",

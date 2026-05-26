@@ -41,12 +41,16 @@ export interface ClientRecord {
   statuses: string[];
   workTypes: string[];
   website: string | null;
+  lookerReport: string | null;
+  clientFolder: string | null;
+  campaignManagerId: string | null;
   approvalPrefs: {
     skipContentApproval: boolean;
     skipContentStrategyApproval: boolean;
   };
 }
 
+/** A deliverable. Called an "Order" in the client-facing UI. */
 export interface Task {
   id: string;
   name: string;
@@ -56,8 +60,23 @@ export interface Task {
   startDate: string | null;
   projectId: string | null;
   projectName: string | null;
+  category: string | null;
+  sku: string | null;
+  deliveryId: string | null; // WO-####
   needsClientInput: boolean;
   clientDeliveryUrl: string | null;
+}
+
+export interface Contact {
+  name: string;
+  role: string | null;
+  email: string | null;
+  bookingUrl: string | null;
+}
+
+export interface Resource {
+  label: string;
+  url: string;
 }
 
 export interface Project {
