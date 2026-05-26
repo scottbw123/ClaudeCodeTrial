@@ -50,6 +50,16 @@ export const getClientById = cache(
   },
 );
 
+/** All loginable clients (those with a Contact Email), for the admin picker. */
+export const getAllClients = cache(async (): Promise<ClientRecord[]> => {
+  const pages = await queryDataSource(notionConfig.dataSources.clients, {
+    filter: { property: props.client.email, email: { is_not_empty: true } },
+    sorts: [{ property: props.client.name, direction: "ascending" }],
+    maxPages: 10,
+  });
+  return pages.map(mapClient);
+});
+
 export const getProjectsForClient = cache(
   async (clientPageId: string): Promise<Project[]> => {
     const pages = await queryDataSource(notionConfig.dataSources.projects, {
