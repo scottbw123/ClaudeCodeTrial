@@ -58,13 +58,16 @@ export function DownloadPdfButton({ filename }: { filename: string }) {
       };
 
       const opts = { scale: 2, backgroundColor: "#ffffff", useCORS: true, logging: false, onclone } as const;
-      const canvases: HTMLCanvasElement[] = [];
-      if (header) canvases.push(await html2canvas(header, opts));
-      canvases.push(await html2canvas(main, opts));
-      if (footer) canvases.push(await html2canvas(footer, opts));
+      const headerCanvas = header ? await html2canvas(header, opts) : null;
+      const mainCanvas = await html2canvas(main, opts);
+      const footerCanvas = footer ? await html2canvas(footer, opts) : null;
 
-      const width = Math.max(...canvases.map((c) => c.width));
-      const totalHeight = canvases.reduce((s, c) => s + c.height, 0);
+      const body = [headerCanvas, mainCanvas].filter(Boolean) as HTMLCanvasElement[];
+      const allCanvases = footerCanvas ? [...body, footerCanvas] : body;
+      const width = Math.max(...allCanvases.map((c) => c.width));
+      // Breathing room between the report body and the black footer bar.
+      const footerGap = footerCanvas ? Math.round(width * 0.03) : 0;
+      const totalHeight = allCanvases.reduce((s, c) => s + c.height, 0) + footerGap;
 
       const combined = document.createElement("canvas");
       combined.width = width;
@@ -74,9 +77,13 @@ export function DownloadPdfButton({ filename }: { filename: string }) {
       ctx.fillStyle = "#ffffff";
       ctx.fillRect(0, 0, width, totalHeight);
       let y = 0;
-      for (const c of canvases) {
+      for (const c of body) {
         ctx.drawImage(c, 0, y);
         y += c.height;
+      }
+      if (footerCanvas) {
+        y += footerGap;
+        ctx.drawImage(footerCanvas, 0, y);
       }
 
       const pdfW = 612; // US Letter width in points (8.5in × 72)
