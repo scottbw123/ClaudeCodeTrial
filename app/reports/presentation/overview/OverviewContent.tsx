@@ -120,17 +120,18 @@ export async function OverviewContent({ searchParams: sp, overviewHref, gscHref,
   const conversionEvents = (sp.events || "").split(",").map((s) => s.trim()).filter(Boolean);
 
   const organicFilter: Ga4Filter[] = [{ fieldName: "sessionDefaultChannelGroup", value: "Organic Search" }];
-  // AI Referral = AI sources arriving via referral medium specifically (not organic, etc.)
+  // AI traffic = any session whose source is an AI tool, regardless of medium
+  // (matches the AI Breakdown page, which includes AI search engines that GA4
+  // classifies as organic rather than referral).
   const aiAllFilter: Ga4Filter[] = [
     { fieldName: "sessionSource", values: AI_SOURCES },
-    { fieldName: "sessionMedium", value: "referral" },
   ];
   const directFilter: Ga4Filter[] = [{ fieldName: "sessionDefaultChannelGroup", value: "Direct" }];
   const eventFilter: Ga4Filter[] = conversionEvents.length > 0
     ? [{ fieldName: "eventName", values: conversionEvents }]
     : [];
 
-  // AI Referral Conversions = events from AI sources (via referral medium) filtered to selected events
+  // AI Conversions = events from AI sources filtered to selected events
   const aiEventFilter: Ga4Filter[] = [...aiAllFilter, ...eventFilter];
 
   // Get event options for the filter dropdown
@@ -259,7 +260,7 @@ export async function OverviewContent({ searchParams: sp, overviewHref, gscHref,
 
   const layer2Totals = [
     { label: "Clicks (Total)", source: "GSC" as const, value: formatBig(totalClicks), changePercent: pct(totalClicks, totalClicksPrev), data: spark(gAll, 1) },
-    { label: "AI Referral Traffic (Referral medium only)", source: "GA4" as const, value: formatBig(aiTotal), changePercent: pct(aiTotal, aiTotalPrev), data: spark(aiDaily, 0) },
+    { label: "AI Traffic (All AI sources)", source: "GA4" as const, value: formatBig(aiTotal), changePercent: pct(aiTotal, aiTotalPrev), data: spark(aiDaily, 0) },
     { label: "Direct Source Traffic", source: "GA4" as const, value: formatBig(directTotal), changePercent: pct(directTotal, directTotalPrev), data: spark(directDaily, 0) },
   ];
   const layer2Branded = [
@@ -274,7 +275,7 @@ export async function OverviewContent({ searchParams: sp, overviewHref, gscHref,
   const eventLabel = conversionEvents.length > 0 ? `${conversionEvents.length} selected` : "all";
   const layer3Cards = [
     { label: `Organic Conversions (Events: ${eventLabel})`, source: "GA4" as const, value: formatBig(eventsTotal), changePercent: pct(eventsTotal, eventsTotalPrev), data: spark(eventsDaily, 0) },
-    { label: `AI Referral Conversions (Events: ${eventLabel})`, source: "GA4" as const, value: formatBig(aiEventsTotal), changePercent: pct(aiEventsTotal, aiEventsTotalPrev), data: spark(aiEventsDaily, 0) },
+    { label: `AI Conversions (Events: ${eventLabel})`, source: "GA4" as const, value: formatBig(aiEventsTotal), changePercent: pct(aiEventsTotal, aiEventsTotalPrev), data: spark(aiEventsDaily, 0) },
     { label: "Conversion Rate (Events / Users)", source: "GA4" as const, value: formatPct(conversionRate, 2), changePercent: pct(conversionRate, conversionRatePrev), data: spark(eventsDaily, 0) },
   ];
 
