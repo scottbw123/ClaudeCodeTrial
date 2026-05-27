@@ -24,8 +24,6 @@ export interface Ga4Filter {
   value?: string;
   values?: string[];
   negate?: boolean;
-  // OR across groups of AND'd sub-filters, e.g. match (hostA AND pathA) OR (hostB AND pathB).
-  or?: Ga4Filter[][];
 }
 
 export async function listProperties(): Promise<Ga4Property[]> {
@@ -58,16 +56,7 @@ interface FilterExpr {
 
 function singleFilterExpression(f: Ga4Filter): FilterExpr {
   let core: FilterExpr;
-  if (f.or && f.or.length > 0) {
-    const expressions: FilterExpr[] = f.or.map((group) =>
-      group.length === 1
-        ? singleFilterExpression(group[0])
-        : { andGroup: { expressions: group.map(singleFilterExpression) } }
-    );
-    // Always wrap in orGroup (even for a single group) so the result is never an
-    // andGroup nested directly inside another andGroup, which GA4 can silently drop.
-    core = { orGroup: { expressions } };
-  } else if (f.values && f.values.length > 0) {
+  if (f.values && f.values.length > 0) {
     if (f.matchType && f.matchType !== "EXACT") {
       // OR a substring/regex match across each value (e.g. CONTAINS any of …).
       const matchType = f.matchType;

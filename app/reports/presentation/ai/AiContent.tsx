@@ -8,21 +8,12 @@ import { UrlCell } from "../components/UrlCell";
 import { TableExport } from "../components/TableExport";
 import { AiControls } from "./Controls";
 
-// Turn full-URL options into per-URL AND groups: a value like
-// https://blog.example.com/foo matches hostName=blog.example.com AND the path;
-// free-typed substrings (no scheme) fall back to a path CONTAINS match. The
-// resulting groups are OR'd together (include) or negated (exclude).
-function urlGroups(values: string[]): Ga4Filter[][] {
-  return values.map((v) => {
-    const m = v.match(/^https?:\/\/([^/]+)(\/.*)?$/i);
-    if (m) {
-      return [
-        { fieldName: "hostName", matchType: "CONTAINS", value: m[1] },
-        { fieldName: "landingPagePlusQueryString", matchType: "CONTAINS", value: m[2] ?? "/" },
-      ];
-    }
-    return [{ fieldName: "landingPagePlusQueryString", matchType: "CONTAINS", value: v }];
-  });
+// Filtering matches on the session-scoped landing path. Options/chips carry the
+// full https://host/path URL for display, so strip the scheme + host back to the
+// path before matching; free-typed substrings (no scheme) pass through as-is.
+function pathOf(v: string): string {
+  const m = v.match(/^https?:\/\/[^/]+(\/.*)?$/i);
+  return m ? (m[1] ?? "/") : v;
 }
 
 // Pages come back as [hostName, landingPagePlusQueryString]; stitch them into a
@@ -145,10 +136,10 @@ export async function AiContent({ searchParams: sp, overviewHref, gscHref, ga4Hr
 
   const aiFilter: Ga4Filter = { fieldName: "sessionSource", values: AI_SOURCES };
   const baseFilters: Ga4Filter[] = [aiFilter];
-  const includeGroups = urlGroups(pageUrls);
-  const excludeGroups = urlGroups(pageUrlsExclude);
-  if (includeGroups.length > 0) baseFilters.push({ or: includeGroups });
-  if (excludeGroups.length > 0) baseFilters.push({ or: excludeGroups, negate: true });
+  const includePaths = pageUrls.map(pathOf);
+  const excludePaths = pageUrlsExclude.map(pathOf);
+  if (includePaths.length > 0) baseFilters.push({ fieldName: "landingPagePlusQueryString", matchType: "CONTAINS", values: includePaths });
+  if (excludePaths.length > 0) baseFilters.push({ fieldName: "landingPagePlusQueryString", matchType: "CONTAINS", values: excludePaths, negate: true });
   if (eventNames.length === 1) baseFilters.push({ fieldName: "eventName", value: eventNames[0] });
   else if (eventNames.length > 1) baseFilters.push({ fieldName: "eventName", values: eventNames });
 
