@@ -19,11 +19,13 @@ export interface Ga4ReportResult {
 }
 
 export interface Ga4Filter {
-  fieldName: string;
+  fieldName?: string;
   matchType?: "EXACT" | "CONTAINS" | "BEGINS_WITH" | "FULL_REGEXP" | "PARTIAL_REGEXP";
   value?: string;
   values?: string[];
   negate?: boolean;
+  // OR across groups of AND'd sub-filters, e.g. match (hostA AND pathA) OR (hostB AND pathB).
+  or?: Ga4Filter[][];
 }
 
 export async function listProperties(): Promise<Ga4Property[]> {
@@ -43,13 +45,32 @@ export async function listProperties(): Promise<Ga4Property[]> {
   return out;
 }
 
-function singleFilterExpression(f: Ga4Filter) {
-  let core;
-  if (f.values && f.values.length > 0) {
+interface FilterExpr {
+  filter?: {
+    fieldName?: string;
+    stringFilter?: { matchType: string; value: string };
+    inListFilter?: { values: string[] };
+  };
+  andGroup?: { expressions: FilterExpr[] };
+  orGroup?: { expressions: FilterExpr[] };
+  notExpression?: FilterExpr;
+}
+
+function singleFilterExpression(f: Ga4Filter): FilterExpr {
+  let core: FilterExpr;
+  if (f.or && f.or.length > 0) {
+    const expressions: FilterExpr[] = f.or.map((group) =>
+      group.length === 1
+        ? singleFilterExpression(group[0])
+        : { andGroup: { expressions: group.map(singleFilterExpression) } }
+    );
+    core = expressions.length === 1 ? expressions[0] : { orGroup: { expressions } };
+  } else if (f.values && f.values.length > 0) {
     if (f.matchType && f.matchType !== "EXACT") {
       // OR a substring/regex match across each value (e.g. CONTAINS any of …).
-      const expressions = f.values.map((v) => ({
-        filter: { fieldName: f.fieldName, stringFilter: { matchType: f.matchType, value: v } },
+      const matchType = f.matchType;
+      const expressions: FilterExpr[] = f.values.map((v) => ({
+        filter: { fieldName: f.fieldName, stringFilter: { matchType, value: v } },
       }));
       core = expressions.length === 1 ? expressions[0] : { orGroup: { expressions } };
     } else {

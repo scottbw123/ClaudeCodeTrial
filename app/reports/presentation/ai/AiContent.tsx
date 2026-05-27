@@ -8,6 +8,24 @@ import { UrlCell } from "../components/UrlCell";
 import { TableExport } from "../components/TableExport";
 import { AiControls } from "./Controls";
 
+// Build a landing-page filter from full-URL options. A value like
+// https://blog.example.com/foo matches hostName=blog.example.com AND the path;
+// free-typed substrings (no scheme) fall back to a path CONTAINS match.
+function pageFilter(values: string[]): Ga4Filter | null {
+  if (values.length === 0) return null;
+  const groups: Ga4Filter[][] = values.map((v) => {
+    const m = v.match(/^https?:\/\/([^/]+)(\/.*)?$/i);
+    if (m) {
+      return [
+        { fieldName: "hostName", matchType: "CONTAINS", value: m[1] },
+        { fieldName: "landingPagePlusQueryString", matchType: "CONTAINS", value: m[2] ?? "/" },
+      ];
+    }
+    return [{ fieldName: "landingPagePlusQueryString", matchType: "CONTAINS", value: v }];
+  });
+  return { or: groups };
+}
+
 // Pages come back as [hostName, landingPagePlusQueryString]; stitch them into a
 // full URL so the table shows the entire address, not just the path.
 function fullUrlPagesGa4(rows: Ga4Row[]): Ga4Row[] {
@@ -127,7 +145,8 @@ export async function AiContent({ searchParams: sp, overviewHref, gscHref, ga4Hr
 
   const aiFilter: Ga4Filter = { fieldName: "sessionSource", values: AI_SOURCES };
   const baseFilters: Ga4Filter[] = [aiFilter];
-  if (pageUrls.length > 0) baseFilters.push({ fieldName: "landingPagePlusQueryString", matchType: "CONTAINS", values: pageUrls });
+  const pf = pageFilter(pageUrls);
+  if (pf) baseFilters.push(pf);
   if (eventNames.length === 1) baseFilters.push({ fieldName: "eventName", value: eventNames[0] });
   else if (eventNames.length > 1) baseFilters.push({ fieldName: "eventName", values: eventNames });
 
@@ -272,11 +291,11 @@ export async function AiContent({ searchParams: sp, overviewHref, gscHref, ga4Hr
           propertyIds,
           startDate: range.startDate,
           endDate: range.endDate,
-          dimensions: ["landingPagePlusQueryString"],
+          dimensions: ["hostName", "landingPagePlusQueryString"],
           metrics: ["sessions"],
           limit: 5000,
           orderByMetric: { name: "sessions" },
-          filters: baseFilters,
+          filters: [aiFilter],
         }),
         runReportMultiProperty({
           propertyIds,
@@ -286,7 +305,7 @@ export async function AiContent({ searchParams: sp, overviewHref, gscHref, ga4Hr
           metrics: ["eventCount"],
           limit: 500,
           orderByMetric: { name: "eventCount" },
-          filters: baseFilters,
+          filters: [aiFilter],
         }),
       ]);
 
@@ -313,7 +332,11 @@ export async function AiContent({ searchParams: sp, overviewHref, gscHref, ga4Hr
       eventsRows = eventsCurrent.rows;
       prevEventsByName = new Map(eventsPrev.rows.map((r) => [r.dimensionValues[0] ?? "", r]));
       eventsWeeklyRows = eventsByDate.rows;
-      pageOptions = Array.from(new Set(pageOpts.rows.map((r) => normalizePageUrl(r.dimensionValues[0] ?? "")).filter(Boolean)));
+      pageOptions = Array.from(new Set(pageOpts.rows.map((r) => {
+        const host = r.dimensionValues[0] ?? "";
+        const path = normalizePageUrl(r.dimensionValues[1] ?? "");
+        return host ? `https://${host}${path}` : path;
+      }).filter(Boolean)));
       eventOptions = eventOpts.rows.map((r) => r.dimensionValues[0] ?? "").filter(Boolean);
     } catch (err) {
       fetchError = err instanceof Error ? err.message : String(err);
