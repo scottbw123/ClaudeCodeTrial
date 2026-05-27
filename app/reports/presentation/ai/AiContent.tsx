@@ -8,13 +8,17 @@ import { UrlCell } from "../components/UrlCell";
 import { TableExport } from "../components/TableExport";
 import { AiControls } from "./Controls";
 
-function normalizePagesGa4(rows: Ga4Row[]): Ga4Row[] {
+// Pages come back as [hostName, landingPagePlusQueryString]; stitch them into a
+// full URL so the table shows the entire address, not just the path.
+function fullUrlPagesGa4(rows: Ga4Row[]): Ga4Row[] {
   const grouped = new Map<string, Ga4Row>();
   for (const r of rows) {
-    const norm = normalizePageUrl(r.dimensionValues[0] ?? "");
-    const existing = grouped.get(norm);
+    const host = r.dimensionValues[0] ?? "";
+    const path = r.dimensionValues[1] ?? "";
+    const url = host ? `https://${host}${path}` : path;
+    const existing = grouped.get(url);
     if (!existing) {
-      grouped.set(norm, { dimensionValues: [norm], metricValues: [...r.metricValues] });
+      grouped.set(url, { dimensionValues: [url], metricValues: [...r.metricValues] });
     } else {
       for (let i = 0; i < r.metricValues.length; i++) {
         existing.metricValues[i] = String(Number(existing.metricValues[i] ?? 0) + Number(r.metricValues[i] ?? 0));
@@ -123,8 +127,7 @@ export async function AiContent({ searchParams: sp, overviewHref, gscHref, ga4Hr
 
   const aiFilter: Ga4Filter = { fieldName: "sessionSource", values: AI_SOURCES };
   const baseFilters: Ga4Filter[] = [aiFilter];
-  if (pageUrls.length === 1) baseFilters.push({ fieldName: "landingPagePlusQueryString", matchType: "CONTAINS", value: pageUrls[0] });
-  else if (pageUrls.length > 1) baseFilters.push({ fieldName: "landingPagePlusQueryString", values: pageUrls });
+  if (pageUrls.length > 0) baseFilters.push({ fieldName: "landingPagePlusQueryString", matchType: "CONTAINS", values: pageUrls });
   if (eventNames.length === 1) baseFilters.push({ fieldName: "eventName", value: eventNames[0] });
   else if (eventNames.length > 1) baseFilters.push({ fieldName: "eventName", values: eventNames });
 
@@ -199,7 +202,7 @@ export async function AiContent({ searchParams: sp, overviewHref, gscHref, ga4Hr
           propertyIds,
           startDate: range.startDate,
           endDate: range.endDate,
-          dimensions: ["landingPagePlusQueryString"],
+          dimensions: ["hostName", "landingPagePlusQueryString"],
           metrics: ["sessions", "eventCount"],
           limit: 50,
           orderByMetric: { name: "sessions" },
@@ -209,7 +212,7 @@ export async function AiContent({ searchParams: sp, overviewHref, gscHref, ga4Hr
           propertyIds,
           startDate: compareRange.startDate,
           endDate: compareRange.endDate,
-          dimensions: ["landingPagePlusQueryString"],
+          dimensions: ["hostName", "landingPagePlusQueryString"],
           metrics: ["sessions", "eventCount"],
           limit: 500,
           filters: baseFilters,
@@ -298,8 +301,8 @@ export async function AiContent({ searchParams: sp, overviewHref, gscHref, ga4Hr
         value: Number(r.metricValues[0] ?? 0),
       }));
 
-      pagesRows = normalizePagesGa4(pagesCurrent.rows);
-      prevPagesByPath = new Map(normalizePagesGa4(pagesPrev.rows).map((r) => [r.dimensionValues[0] ?? "", r]));
+      pagesRows = fullUrlPagesGa4(pagesCurrent.rows);
+      prevPagesByPath = new Map(fullUrlPagesGa4(pagesPrev.rows).map((r) => [r.dimensionValues[0] ?? "", r]));
 
       sourceWeeklyRows = sourceByDate.rows;
       trafficSourceRows = trafficSrc.rows;

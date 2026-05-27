@@ -46,12 +46,20 @@ export async function listProperties(): Promise<Ga4Property[]> {
 function singleFilterExpression(f: Ga4Filter) {
   let core;
   if (f.values && f.values.length > 0) {
-    core = {
-      filter: {
-        fieldName: f.fieldName,
-        inListFilter: { values: f.values },
-      },
-    };
+    if (f.matchType && f.matchType !== "EXACT") {
+      // OR a substring/regex match across each value (e.g. CONTAINS any of …).
+      const expressions = f.values.map((v) => ({
+        filter: { fieldName: f.fieldName, stringFilter: { matchType: f.matchType, value: v } },
+      }));
+      core = expressions.length === 1 ? expressions[0] : { orGroup: { expressions } };
+    } else {
+      core = {
+        filter: {
+          fieldName: f.fieldName,
+          inListFilter: { values: f.values },
+        },
+      };
+    }
   } else {
     core = {
       filter: {
