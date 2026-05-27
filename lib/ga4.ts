@@ -64,7 +64,9 @@ function singleFilterExpression(f: Ga4Filter): FilterExpr {
         ? singleFilterExpression(group[0])
         : { andGroup: { expressions: group.map(singleFilterExpression) } }
     );
-    core = expressions.length === 1 ? expressions[0] : { orGroup: { expressions } };
+    // Always wrap in orGroup (even for a single group) so the result is never an
+    // andGroup nested directly inside another andGroup, which GA4 can silently drop.
+    core = { orGroup: { expressions } };
   } else if (f.values && f.values.length > 0) {
     if (f.matchType && f.matchType !== "EXACT") {
       // OR a substring/regex match across each value (e.g. CONTAINS any of …).
