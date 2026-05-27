@@ -8,12 +8,12 @@ import { UrlCell } from "../components/UrlCell";
 import { TableExport } from "../components/TableExport";
 import { AiControls } from "./Controls";
 
-// Build a landing-page filter from full-URL options. A value like
+// Turn full-URL options into per-URL AND groups: a value like
 // https://blog.example.com/foo matches hostName=blog.example.com AND the path;
-// free-typed substrings (no scheme) fall back to a path CONTAINS match.
-function pageFilter(values: string[]): Ga4Filter | null {
-  if (values.length === 0) return null;
-  const groups: Ga4Filter[][] = values.map((v) => {
+// free-typed substrings (no scheme) fall back to a path CONTAINS match. The
+// resulting groups are OR'd together (include) or negated (exclude).
+function urlGroups(values: string[]): Ga4Filter[][] {
+  return values.map((v) => {
     const m = v.match(/^https?:\/\/([^/]+)(\/.*)?$/i);
     if (m) {
       return [
@@ -23,7 +23,6 @@ function pageFilter(values: string[]): Ga4Filter | null {
     }
     return [{ fieldName: "landingPagePlusQueryString", matchType: "CONTAINS", value: v }];
   });
-  return { or: groups };
 }
 
 // Pages come back as [hostName, landingPagePlusQueryString]; stitch them into a
@@ -141,12 +140,15 @@ export async function AiContent({ searchParams: sp, overviewHref, gscHref, ga4Hr
   const compareRange = previousPeriod(range.startDate, range.endDate);
 
   const pageUrls = (sp.pageUrl || "").split(",").map((s) => s.trim()).filter(Boolean);
+  const pageUrlsExclude = (sp.pageUrlExclude || "").split(",").map((s) => s.trim()).filter(Boolean);
   const eventNames = (sp.eventName || "").split(",").map((s) => s.trim()).filter(Boolean);
 
   const aiFilter: Ga4Filter = { fieldName: "sessionSource", values: AI_SOURCES };
   const baseFilters: Ga4Filter[] = [aiFilter];
-  const pf = pageFilter(pageUrls);
-  if (pf) baseFilters.push(pf);
+  const includeGroups = urlGroups(pageUrls);
+  const excludeGroups = urlGroups(pageUrlsExclude);
+  if (includeGroups.length > 0) baseFilters.push({ or: includeGroups });
+  if (excludeGroups.length > 0) baseFilters.push({ or: excludeGroups, negate: true });
   if (eventNames.length === 1) baseFilters.push({ fieldName: "eventName", value: eventNames[0] });
   else if (eventNames.length > 1) baseFilters.push({ fieldName: "eventName", values: eventNames });
 
@@ -400,6 +402,7 @@ export async function AiContent({ searchParams: sp, overviewHref, gscHref, ga4Hr
         currentStart={range.startDate}
         currentEnd={range.endDate}
         currentPageUrls={pageUrls}
+        currentPageUrlsExclude={pageUrlsExclude}
         currentEventNames={eventNames}
         pageOptions={pageOptions}
         eventOptions={eventOptions}

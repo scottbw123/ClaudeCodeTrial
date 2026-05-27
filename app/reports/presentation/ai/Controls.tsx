@@ -24,6 +24,7 @@ export function AiControls({
   currentStart,
   currentEnd,
   currentPageUrls,
+  currentPageUrlsExclude,
   currentEventNames,
   pageOptions,
   eventOptions,
@@ -34,6 +35,7 @@ export function AiControls({
   currentStart: string;
   currentEnd: string;
   currentPageUrls: string[];
+  currentPageUrlsExclude: string[];
   currentEventNames: string[];
   pageOptions: string[];
   eventOptions: string[];
@@ -43,10 +45,12 @@ export function AiControls({
   const [pending, startTransition] = useTransition();
 
   const [localPageUrls, setLocalPageUrls] = useState(currentPageUrls);
+  const [localPageUrlsExc, setLocalPageUrlsExc] = useState(currentPageUrlsExclude);
   const [localEventNames, setLocalEventNames] = useState(currentEventNames);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => setLocalPageUrls(currentPageUrls), [currentPageUrls.join(",")]);
+  useEffect(() => setLocalPageUrlsExc(currentPageUrlsExclude), [currentPageUrlsExclude.join(",")]);
   useEffect(() => setLocalEventNames(currentEventNames), [currentEventNames.join(",")]);
 
   function buildSp(updates: Record<string, string | null>) {
@@ -84,19 +88,24 @@ export function AiControls({
             const ids = vs
               .map((label) => properties.find((p) => `${p.accountName} — ${p.propertyName}` === label)?.propertyId)
               .filter(Boolean) as string[];
-            pushImmediate({ propertyId: ids.length ? ids.join(",") : null, pageUrl: null, eventName: null });
+            pushImmediate({ propertyId: ids.length ? ids.join(",") : null, pageUrl: null, pageUrlExclude: null, eventName: null });
           }}
           placeholder="Select properties…"
         />
         <Combobox
           label="Full page URL contains (multi-select)"
           values={localPageUrls}
+          excludeValues={localPageUrlsExc}
           options={pageOptions}
           multi
           substringMode
-          onChange={(vs) => {
+          onChange={(vs, exc) => {
             setLocalPageUrls(vs);
-            pushDebounced({ pageUrl: vs.length ? vs.join(",") : null });
+            setLocalPageUrlsExc(exc);
+            pushDebounced({
+              pageUrl: vs.length ? vs.join(",") : null,
+              pageUrlExclude: exc.length ? exc.join(",") : null,
+            });
           }}
           placeholder="All pages"
         />
