@@ -407,6 +407,27 @@ export async function AiContent({ searchParams: sp, overviewHref, gscHref, ga4Hr
         </div>
       )}
 
+      <details data-pdf-hide className="max-w-[1400px] mx-auto px-6 mt-4" open>
+        <summary className="cursor-pointer text-xs uppercase tracking-wide text-gray-500 font-semibold not-italic">
+          Filter diagnostics — server received
+        </summary>
+        <pre className="mt-2 text-[11px] bg-gray-900 text-gray-100 p-3 overflow-x-auto rounded-md not-italic leading-relaxed">
+{JSON.stringify({
+  receivedParams: {
+    propertyId: sp.propertyId ?? null,
+    pageUrl: sp.pageUrl ?? null,
+    pageUrlExclude: sp.pageUrlExclude ?? null,
+    eventName: sp.eventName ?? null,
+    days: sp.days ?? null,
+    start: sp.start ?? null,
+    end: sp.end ?? null,
+  },
+  parsed: { pageUrls, pageUrlsExclude, eventNames, includePaths, excludePaths },
+  baseFilters,
+}, null, 2)}
+        </pre>
+      </details>
+
       <section className="max-w-[1400px] mx-auto px-6 mt-6 grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="bg-white border border-gray-200 rounded-md p-4">
           <h3 className="text-xl font-bold text-gray-900">Sessions by AI Source</h3>
