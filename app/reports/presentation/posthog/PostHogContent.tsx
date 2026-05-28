@@ -1,5 +1,6 @@
 import { listPosthogProjects, runHogQLMultiProject, listRecordings, type HogQLResult } from "@/lib/posthog";
 import { previousPeriod, rangeFromDays, daysBetween } from "@/lib/date-utils";
+import { AI_SOURCES } from "@/lib/ai-sources";
 import { PresentationHeader } from "../components/Header";
 import { PresentationFooter } from "../components/Footer";
 import { UrlCell } from "../components/UrlCell";
@@ -43,6 +44,40 @@ function inListSql(field: string, values: string[]): string {
   return `${field} IN (${values.map(quote).join(",")})`;
 }
 
+// OR-of-CONTAINS across a list of URL substrings, evaluated against the given expression.
+function orContainsSql(expr: string, needles: string[]): string {
+  return needles.map((n) => `position(${expr}, ${quote(n)}) > 0`).join(" OR ");
+}
+
+// PostHog has no built-in channel grouping; classify sessions from their
+// first-event referring domain + UTM medium.
+function channelCase(refExpr: string, medExpr: string): string {
+  const aiDomains = `[${AI_SOURCES.map(quote).join(",")}]`;
+  const search = ["google.", "bing.", "duckduckgo.", "yahoo.", "yandex.", "baidu."];
+  const social = ["facebook.", "t.co", "twitter.", "x.com", "instagram.", "linkedin.", "tiktok.", "youtube.", "pinterest.", "reddit."];
+  const searchCond = search.map((d) => `positionCaseInsensitive(${refExpr}, ${quote(d)}) > 0`).join(" OR ");
+  const socialCond = social.map((d) => `positionCaseInsensitive(${refExpr}, ${quote(d)}) > 0`).join(" OR ");
+  return `multiIf(
+    arrayExists(d -> positionCaseInsensitive(${refExpr}, d) > 0, ${aiDomains}), 'AI Referral',
+    lower(${medExpr}) IN ('cpc','ppc','paid','paid_search','paidsearch','paid_social','paidsocial','display','banner','cpm'), 'Paid Ads',
+    lower(${medExpr}) = 'email', 'Email',
+    ${searchCond}, 'Organic Search',
+    ${socialCond}, 'Social',
+    ${refExpr} = '' OR ${refExpr} = '$direct', 'Direct',
+    'Referral'
+  )`;
+}
+
+const CHANNEL_COLORS: Record<string, string> = {
+  "AI Referral": "#7c3aed",
+  "Paid Ads": "#f97316",
+  "Organic Search": "#1d4ed8",
+  "Social": "#ec4899",
+  "Email": "#10b981",
+  "Direct": "#6b7280",
+  "Referral": "#06b6d4",
+};
+
 export async function PostHogContent({ searchParams: sp, overviewHref, gscHref, ga4Href, aiHref, posthogHref }: Props) {
   let projects: Awaited<ReturnType<typeof listPosthogProjects>> = [];
   let setupError: string | null = null;
@@ -61,6 +96,7 @@ export async function PostHogContent({ searchParams: sp, overviewHref, gscHref, 
   const compareRange = previousPeriod(range.startDate, range.endDate);
 
   const eventNames = (sp.eventName || "").split(",").map((s) => s.trim()).filter(Boolean);
+  const funnelStartPages = (sp.funnelStartPages || "").split(",").map((s) => s.trim()).filter(Boolean);
   const funnelStart = (sp.funnelStart || "").trim();
   const funnelEnd = (sp.funnelEnd || "").trim();
 
@@ -82,6 +118,8 @@ export async function PostHogContent({ searchParams: sp, overviewHref, gscHref, 
   let totalEvents = 0, totalEventsPrev = 0;
   let recordings: Awaited<ReturnType<typeof listRecordings>> = [];
   let eventOptions: string[] = [];
+  let pageOptions: string[] = [];
+  let channelRows: { channel: string; sessions: number }[] = [];
   let fetchError: string | null = null;
 
   if (projectIds.length > 0 && !setupError) {
@@ -99,6 +137,8 @@ export async function PostHogContent({ searchParams: sp, overviewHref, gscHref, 
         funnelRes,
         conversionsCur,
         conversionsPrev,
+        channelsRes,
+        pageOptsRows,
       ] = await Promise.all([
         runHogQLMultiProject({
           projectIds,
@@ -162,13 +202,18 @@ export async function PostHogContent({ searchParams: sp, overviewHref, gscHref, 
           ? listRecordings({ projectId: projectIds[0], startDate: range.startDate, endDate: range.endDate, limit: 20 })
               .catch(() => [])
           : Promise.resolve([] as Awaited<ReturnType<typeof listRecordings>>),
-        funnelStart && funnelEnd
+        (funnelStartPages.length > 0 || funnelStart) && funnelEnd
           ? runHogQLMultiProject({
               projectIds,
               query: `WITH starters AS (
                         SELECT DISTINCT person_id, min(timestamp) AS t0
                         FROM events
-                        WHERE event = ${quote(funnelStart)} AND timestamp >= ${startD} AND timestamp <= ${endD}
+                        WHERE timestamp >= ${startD} AND timestamp <= ${endD}
+                          AND ${
+                            funnelStartPages.length > 0
+                              ? `event = '$pageview' AND (${orContainsSql("properties.$current_url", funnelStartPages)})`
+                              : `event = ${quote(funnelStart)}`
+                          }
                         GROUP BY person_id
                       ),
                       finishers AS (
@@ -198,6 +243,26 @@ export async function PostHogContent({ searchParams: sp, overviewHref, gscHref, 
                       GROUP BY event`,
             })
           : Promise.resolve({ columns: [], results: [] } as HogQLResult),
+        runHogQLMultiProject({
+          projectIds,
+          query: `WITH sa AS (
+                    SELECT $session_id AS sid,
+                           argMin(coalesce(properties.$referring_domain, ''), timestamp) AS ref,
+                           argMin(coalesce(properties.$utm_medium, ''), timestamp) AS utm_med
+                    FROM events
+                    WHERE timestamp >= ${startD} AND timestamp <= ${endD} AND $session_id IS NOT NULL
+                    GROUP BY sid
+                  )
+                  SELECT ${channelCase("ref", "utm_med")} AS channel, count() AS sessions
+                  FROM sa GROUP BY channel ORDER BY sessions DESC`,
+        }),
+        runHogQLMultiProject({
+          projectIds,
+          query: `SELECT properties.$current_url FROM events
+                  WHERE event = '$pageview' AND timestamp >= ${startD} AND timestamp <= ${endD}
+                    AND notEmpty(properties.$current_url)
+                  GROUP BY properties.$current_url ORDER BY count() DESC LIMIT 500`,
+        }),
       ]);
 
       dailySessions = sessionsTs.results.map((r) => ({ date: String(r[0] ?? ""), value: Number(r[1] ?? 0) }));
@@ -213,9 +278,11 @@ export async function PostHogContent({ searchParams: sp, overviewHref, gscHref, 
       topSources = sourcesRows.results.map((r) => ({ source: String(r[0] ?? ""), sessions: Number(r[1] ?? 0) }));
       topAutocapture = autocaptureRows.results.map((r) => ({ selector: String(r[0] ?? ""), clicks: Number(r[1] ?? 0) }));
       eventOptions = eventOptsRows.results.map((r) => String(r[0] ?? "")).filter(Boolean);
+      pageOptions = pageOptsRows.results.map((r) => String(r[0] ?? "")).filter(Boolean);
+      channelRows = channelsRes.results.map((r) => ({ channel: String(r[0] ?? ""), sessions: Number(r[1] ?? 0) }));
       recordings = recsResult;
 
-      if (funnelStart && funnelEnd && funnelRes.results[0]) {
+      if ((funnelStartPages.length > 0 || funnelStart) && funnelEnd && funnelRes.results[0]) {
         funnelStep1 = Number(funnelRes.results[0][0] ?? 0);
         funnelStep2 = Number(funnelRes.results[0][1] ?? 0);
       }
@@ -254,9 +321,11 @@ export async function PostHogContent({ searchParams: sp, overviewHref, gscHref, 
           currentStart={range.startDate}
           currentEnd={range.endDate}
           currentEventNames={eventNames}
+          currentFunnelStartPages={funnelStartPages}
           currentFunnelStart={funnelStart}
           currentFunnelEnd={funnelEnd}
           eventOptions={eventOptions}
+          pageOptions={pageOptions}
         />
 
         {setupError && (
@@ -410,6 +479,58 @@ export async function PostHogContent({ searchParams: sp, overviewHref, gscHref, 
           </section>
         )}
 
+        <section className="max-w-[1400px] mx-auto px-6 mt-8">
+          <div className="bg-white border border-gray-200 rounded-md p-4">
+            <TableExport title="Traffic by Channel (PostHog)">
+              <h3 className="text-xl font-bold text-gray-900 mb-1">Traffic by Channel</h3>
+              <p className="text-sm text-gray-500 mb-3">Sessions split by Paid Ads, Organic Search, AI Referral, Social, Email, Direct, and Referral — classified from the session&apos;s first-event referring domain and UTM medium.</p>
+              {(() => {
+                const totalChannelSessions = channelRows.reduce((s, c) => s + c.sessions, 0);
+                return (
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full text-sm">
+                      <thead className="bg-black text-white text-xs">
+                        <tr>
+                          <th className="px-3 py-2 text-left font-semibold w-44">Channel</th>
+                          <th className="px-3 py-2 text-right font-semibold">Sessions</th>
+                          <th className="px-3 py-2 text-right font-semibold w-20">Share</th>
+                          <th className="px-3 py-2 font-semibold">Distribution</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {channelRows.length === 0 && (
+                          <tr><td colSpan={4} className="px-3 py-6 text-center text-gray-400">No channel data</td></tr>
+                        )}
+                        {channelRows.map((c, i) => {
+                          const share = totalChannelSessions > 0 ? c.sessions / totalChannelSessions : 0;
+                          const color = CHANNEL_COLORS[c.channel] ?? "#9ca3af";
+                          return (
+                            <tr key={c.channel} className={i % 2 === 0 ? "bg-white" : "bg-gray-50"}>
+                              <td className="px-3 py-1.5 font-medium">
+                                <span className="inline-flex items-center gap-2">
+                                  <span className="inline-block w-2.5 h-2.5 rounded-sm" style={{ background: color }} />
+                                  {c.channel}
+                                </span>
+                              </td>
+                              <td className="px-3 py-1.5 text-right tabular-nums">{formatBig(c.sessions)}</td>
+                              <td className="px-3 py-1.5 text-right tabular-nums">{(share * 100).toFixed(1)}%</td>
+                              <td className="px-3 py-1.5">
+                                <div className="h-2 w-full bg-gray-100 rounded-sm overflow-hidden">
+                                  <div className="h-full" style={{ width: `${share * 100}%`, background: color }} />
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                );
+              })()}
+            </TableExport>
+          </div>
+        </section>
+
         <section className="max-w-[1400px] mx-auto px-6 mt-10 border-t border-gray-200 pt-6">
           <h2 className="text-2xl font-bold text-gray-900 mb-1">PostHog-only insights</h2>
           <p className="text-sm text-gray-500 mb-4">Funnels, session recordings, and autocapture clicks — the things PostHog measures that GA4 doesn&apos;t.</p>
@@ -417,11 +538,15 @@ export async function PostHogContent({ searchParams: sp, overviewHref, gscHref, 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <div className="bg-white border border-gray-200 rounded-md p-4">
               <h3 className="text-xl font-bold text-gray-900 mb-2">Funnel</h3>
-              {funnelStart && funnelEnd ? (
+              {(funnelStartPages.length > 0 || funnelStart) && funnelEnd ? (
                 <>
                   <div className="grid grid-cols-3 gap-3 mb-3">
                     <div className="bg-gray-50 border border-gray-200 rounded-md p-3 text-center">
-                      <p className="text-xs text-gray-500">{funnelStart}</p>
+                      <p className="text-xs text-gray-500 truncate" title={funnelStartPages.length > 0 ? funnelStartPages.join(", ") : funnelStart}>
+                        {funnelStartPages.length > 0
+                          ? `Visited ${funnelStartPages.length} page${funnelStartPages.length === 1 ? "" : "s"}`
+                          : funnelStart}
+                      </p>
                       <p className="text-2xl font-bold tabular-nums">{formatBig(funnelStep1)}</p>
                     </div>
                     <div className="bg-gray-50 border border-gray-200 rounded-md p-3 text-center">
@@ -438,7 +563,7 @@ export async function PostHogContent({ searchParams: sp, overviewHref, gscHref, 
                   </div>
                 </>
               ) : (
-                <p className="text-sm text-gray-400">Pick step 1 and step 2 events above to build a funnel.</p>
+                <p className="text-sm text-gray-400">Pick funnel start pages (or a start event) and an end event above to build a funnel.</p>
               )}
             </div>
 

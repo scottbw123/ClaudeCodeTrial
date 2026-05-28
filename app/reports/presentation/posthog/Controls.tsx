@@ -24,9 +24,11 @@ export function PostHogControls({
   currentStart,
   currentEnd,
   currentEventNames,
+  currentFunnelStartPages,
   currentFunnelStart,
   currentFunnelEnd,
   eventOptions,
+  pageOptions,
 }: {
   projects: PosthogProject[];
   currentProjects: string[];
@@ -34,18 +36,22 @@ export function PostHogControls({
   currentStart: string;
   currentEnd: string;
   currentEventNames: string[];
+  currentFunnelStartPages: string[];
   currentFunnelStart: string;
   currentFunnelEnd: string;
   eventOptions: string[];
+  pageOptions: string[];
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [pending, startTransition] = useTransition();
 
   const [localEventNames, setLocalEventNames] = useState(currentEventNames);
+  const [localFunnelStartPages, setLocalFunnelStartPages] = useState(currentFunnelStartPages);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => setLocalEventNames(currentEventNames), [currentEventNames.join(",")]);
+  useEffect(() => setLocalFunnelStartPages(currentFunnelStartPages), [currentFunnelStartPages.join(",")]);
 
   function buildSp(updates: Record<string, string | null>) {
     const sp = new URLSearchParams(searchParams.toString());
@@ -72,7 +78,7 @@ export function PostHogControls({
 
   return (
     <section className="max-w-[1400px] mx-auto px-6 pt-6">
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 mb-3">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-3 mb-3">
         <Combobox
           label="PostHog projects (multi-select)"
           values={currentProjects.map(projectLabel)}
@@ -82,7 +88,7 @@ export function PostHogControls({
             const ids = vs
               .map((label) => projects.find((p) => `${p.organizationName} — ${p.projectName}` === label)?.projectId)
               .filter(Boolean) as string[];
-            pushImmediate({ projectId: ids.length ? ids.join(",") : null, eventName: null, funnelStart: null, funnelEnd: null });
+            pushImmediate({ projectId: ids.length ? ids.join(",") : null, eventName: null, funnelStart: null, funnelEnd: null, funnelStartPages: null });
           }}
           placeholder="Select projects…"
         />
@@ -98,18 +104,30 @@ export function PostHogControls({
           placeholder="All events"
         />
         <Combobox
-          label="Funnel step 1 (event)"
+          label="Funnel start pages (URL contains)"
+          values={localFunnelStartPages}
+          options={pageOptions}
+          multi
+          substringMode
+          onChange={(vs) => {
+            setLocalFunnelStartPages(vs);
+            pushDebounced({ funnelStartPages: vs.length ? vs.join(",") : null });
+          }}
+          placeholder="Pages that count as step 1…"
+        />
+        <Combobox
+          label="Funnel start event (used if no pages)"
           values={currentFunnelStart ? [currentFunnelStart] : []}
           options={eventOptions}
           onChange={(vs) => pushImmediate({ funnelStart: vs[0] ?? null })}
           placeholder="Start event…"
         />
         <Combobox
-          label="Funnel step 2 (event)"
+          label="Funnel end event"
           values={currentFunnelEnd ? [currentFunnelEnd] : []}
           options={eventOptions}
           onChange={(vs) => pushImmediate({ funnelEnd: vs[0] ?? null })}
-          placeholder="End event…"
+          placeholder="End event (e.g. intake form)…"
         />
       </div>
 
