@@ -6,6 +6,7 @@ import { PresentationFooter } from "../components/Footer";
 import { UrlCell } from "../components/UrlCell";
 import { TableExport } from "../components/TableExport";
 import { PostHogControls } from "./Controls";
+import { UserPaths } from "./UserPaths";
 import { SessionsLineChart, StatCard } from "../ai/AiSections";
 
 interface Props {
@@ -50,16 +51,22 @@ function orContainsSql(expr: string, needles: string[]): string {
 }
 
 // PostHog has no built-in channel grouping; classify sessions from their
-// first-event referring domain + UTM medium.
-function channelCase(refExpr: string, medExpr: string): string {
+// first-event referring domain, UTM medium/source, and paid-click IDs.
+// Paid-click IDs are checked first because a Google Ads click arrives with
+// referring_domain=google.com (would otherwise be Organic Search).
+function channelCase(refExpr: string, medExpr: string, srcExpr: string, gclidExpr: string, fbclidExpr: string, msclkidExpr: string): string {
   const aiDomains = `[${AI_SOURCES.map(quote).join(",")}]`;
   const search = ["google.", "bing.", "duckduckgo.", "yahoo.", "yandex.", "baidu."];
   const social = ["facebook.", "t.co", "twitter.", "x.com", "instagram.", "linkedin.", "tiktok.", "youtube.", "pinterest.", "reddit."];
+  const paidSrcPatterns = ["ads", "adwords", "googleads", "facebookads", "metaads", "fbads", "linkedinads", "bingads", "tiktokads", "twitterads"];
   const searchCond = search.map((d) => `positionCaseInsensitive(${refExpr}, ${quote(d)}) > 0`).join(" OR ");
   const socialCond = social.map((d) => `positionCaseInsensitive(${refExpr}, ${quote(d)}) > 0`).join(" OR ");
+  const paidSrcCond = paidSrcPatterns.map((p) => `positionCaseInsensitive(${srcExpr}, ${quote(p)}) > 0`).join(" OR ");
   return `multiIf(
+    notEmpty(${gclidExpr}) OR notEmpty(${fbclidExpr}) OR notEmpty(${msclkidExpr}), 'Paid Ads',
+    lower(${medExpr}) IN ('cpc','ppc','paid','paid_search','paidsearch','paid_social','paidsocial','display','banner','cpm','retargeting'), 'Paid Ads',
+    ${paidSrcCond}, 'Paid Ads',
     arrayExists(d -> positionCaseInsensitive(${refExpr}, d) > 0, ${aiDomains}), 'AI Referral',
-    lower(${medExpr}) IN ('cpc','ppc','paid','paid_search','paidsearch','paid_social','paidsocial','display','banner','cpm'), 'Paid Ads',
     lower(${medExpr}) = 'email', 'Email',
     ${searchCond}, 'Organic Search',
     ${socialCond}, 'Social',
@@ -67,6 +74,8 @@ function channelCase(refExpr: string, medExpr: string): string {
     'Referral'
   )`;
 }
+
+const CHANNEL_NAMES = ["AI Referral", "Paid Ads", "Organic Search", "Social", "Email", "Direct", "Referral"];
 
 const CHANNEL_COLORS: Record<string, string> = {
   "AI Referral": "#7c3aed",
@@ -99,12 +108,33 @@ export async function PostHogContent({ searchParams: sp, overviewHref, gscHref, 
   const funnelStartPages = (sp.funnelStartPages || "").split(",").map((s) => s.trim()).filter(Boolean);
   const funnelStart = (sp.funnelStart || "").trim();
   const funnelEnd = (sp.funnelEnd || "").trim();
+  const selectedChannels = (sp.channel || "").split(",").map((s) => s.trim()).filter(Boolean);
 
   const eventClause = eventNames.length > 0 ? ` AND ${inListSql("event", eventNames)}` : "";
   const startD = quote(range.startDate);
   const endD = quote(range.endDate);
   const prevStartD = quote(compareRange.startDate);
   const prevEndD = quote(compareRange.endDate);
+
+  // Restrict $session_id to sessions whose classified channel is one of the
+  // selected ones. Returns an empty string when no channel filter is active.
+  function channelFilter(startBound: string, endBound: string): string {
+    if (selectedChannels.length === 0) return "";
+    const ref = "argMin(coalesce(properties.$referring_domain, ''), timestamp)";
+    const med = "argMin(coalesce(properties.$utm_medium, ''), timestamp)";
+    const src = "argMin(coalesce(properties.$utm_source, ''), timestamp)";
+    const gclid = "argMin(coalesce(properties.$gclid, ''), timestamp)";
+    const fbclid = "argMin(coalesce(properties.$fbclid, ''), timestamp)";
+    const msclkid = "argMin(coalesce(properties.$msclkid, ''), timestamp)";
+    return ` AND $session_id IN (
+      SELECT $session_id FROM events
+      WHERE timestamp >= ${startBound} AND timestamp <= ${endBound} AND $session_id IS NOT NULL
+      GROUP BY $session_id
+      HAVING ${channelCase(ref, med, src, gclid, fbclid, msclkid)} IN (${selectedChannels.map(quote).join(",")})
+    )`;
+  }
+  const chCur = channelFilter(startD, endD);
+  const chPrev = channelFilter(prevStartD, prevEndD);
 
   let dailySessions: { date: string; value: number }[] = [];
   let topEvents: { name: string; count: number; users: number }[] = [];
@@ -120,6 +150,7 @@ export async function PostHogContent({ searchParams: sp, overviewHref, gscHref, 
   let eventOptions: string[] = [];
   let pageOptions: string[] = [];
   let channelRows: { channel: string; sessions: number }[] = [];
+  let sessionPaths: string[][] = [];
   let fetchError: string | null = null;
 
   if (projectIds.length > 0 && !setupError) {
@@ -139,31 +170,32 @@ export async function PostHogContent({ searchParams: sp, overviewHref, gscHref, 
         conversionsPrev,
         channelsRes,
         pageOptsRows,
+        pathsRes,
       ] = await Promise.all([
         runHogQLMultiProject({
           projectIds,
           query: `SELECT toString(toDate(timestamp)) AS d, count(DISTINCT $session_id) AS sessions
                   FROM events
-                  WHERE timestamp >= ${startD} AND timestamp <= ${endD}${eventClause}
+                  WHERE timestamp >= ${startD} AND timestamp <= ${endD}${eventClause}${chCur}
                   GROUP BY d ORDER BY d ASC`,
         }),
         runHogQLMultiProject({
           projectIds,
           query: `SELECT count(DISTINCT $session_id), count(DISTINCT person_id), count()
                   FROM events
-                  WHERE timestamp >= ${startD} AND timestamp <= ${endD}${eventClause}`,
+                  WHERE timestamp >= ${startD} AND timestamp <= ${endD}${eventClause}${chCur}`,
         }),
         runHogQLMultiProject({
           projectIds,
           query: `SELECT count(DISTINCT $session_id), count(DISTINCT person_id), count()
                   FROM events
-                  WHERE timestamp >= ${prevStartD} AND timestamp <= ${prevEndD}${eventClause}`,
+                  WHERE timestamp >= ${prevStartD} AND timestamp <= ${prevEndD}${eventClause}${chPrev}`,
         }),
         runHogQLMultiProject({
           projectIds,
           query: `SELECT event, count() AS c, count(DISTINCT person_id) AS u
                   FROM events
-                  WHERE timestamp >= ${startD} AND timestamp <= ${endD}${eventClause}
+                  WHERE timestamp >= ${startD} AND timestamp <= ${endD}${eventClause}${chCur}
                   GROUP BY event ORDER BY c DESC LIMIT 25`,
         }),
         runHogQLMultiProject({
@@ -171,7 +203,7 @@ export async function PostHogContent({ searchParams: sp, overviewHref, gscHref, 
           query: `SELECT properties.$current_url AS url, count() AS views, count(DISTINCT person_id) AS users
                   FROM events
                   WHERE event = '$pageview' AND timestamp >= ${startD} AND timestamp <= ${endD}
-                    AND notEmpty(properties.$current_url)
+                    AND notEmpty(properties.$current_url)${chCur}
                   GROUP BY url ORDER BY views DESC LIMIT 25`,
         }),
         runHogQLMultiProject({
@@ -181,7 +213,7 @@ export async function PostHogContent({ searchParams: sp, overviewHref, gscHref, 
                                   'direct') AS src,
                          count(DISTINCT $session_id) AS sessions
                   FROM events
-                  WHERE timestamp >= ${startD} AND timestamp <= ${endD}
+                  WHERE timestamp >= ${startD} AND timestamp <= ${endD}${chCur}
                   GROUP BY src ORDER BY sessions DESC LIMIT 15`,
         }),
         runHogQLMultiProject({
@@ -189,13 +221,13 @@ export async function PostHogContent({ searchParams: sp, overviewHref, gscHref, 
           query: `SELECT concat(coalesce(properties.$el_text, ''), ' [', coalesce(properties.$elements_chain_tag, ''), ']') AS sel,
                          count() AS clicks
                   FROM events
-                  WHERE event = '$autocapture' AND timestamp >= ${startD} AND timestamp <= ${endD}
+                  WHERE event = '$autocapture' AND timestamp >= ${startD} AND timestamp <= ${endD}${chCur}
                   GROUP BY sel ORDER BY clicks DESC LIMIT 15`,
         }),
         runHogQLMultiProject({
           projectIds,
           query: `SELECT event, count() FROM events
-                  WHERE timestamp >= ${startD} AND timestamp <= ${endD}
+                  WHERE timestamp >= ${startD} AND timestamp <= ${endD}${chCur}
                   GROUP BY event ORDER BY count() DESC LIMIT 500`,
         }),
         projectIds.length === 1
@@ -213,7 +245,7 @@ export async function PostHogContent({ searchParams: sp, overviewHref, gscHref, 
                             funnelStartPages.length > 0
                               ? `event = '$pageview' AND (${orContainsSql("properties.$current_url", funnelStartPages)})`
                               : `event = ${quote(funnelStart)}`
-                          }
+                          }${chCur}
                         GROUP BY person_id
                       ),
                       finishers AS (
@@ -230,7 +262,7 @@ export async function PostHogContent({ searchParams: sp, overviewHref, gscHref, 
               projectIds,
               query: `SELECT event, count() AS c, count(DISTINCT person_id) AS u
                       FROM events
-                      WHERE timestamp >= ${startD} AND timestamp <= ${endD} AND ${inListSql("event", eventNames)}
+                      WHERE timestamp >= ${startD} AND timestamp <= ${endD} AND ${inListSql("event", eventNames)}${chCur}
                       GROUP BY event ORDER BY c DESC`,
             })
           : Promise.resolve({ columns: [], results: [] } as HogQLResult),
@@ -239,7 +271,7 @@ export async function PostHogContent({ searchParams: sp, overviewHref, gscHref, 
               projectIds,
               query: `SELECT event, count() AS c
                       FROM events
-                      WHERE timestamp >= ${prevStartD} AND timestamp <= ${prevEndD} AND ${inListSql("event", eventNames)}
+                      WHERE timestamp >= ${prevStartD} AND timestamp <= ${prevEndD} AND ${inListSql("event", eventNames)}${chPrev}
                       GROUP BY event`,
             })
           : Promise.resolve({ columns: [], results: [] } as HogQLResult),
@@ -248,21 +280,49 @@ export async function PostHogContent({ searchParams: sp, overviewHref, gscHref, 
           query: `WITH sa AS (
                     SELECT $session_id AS sid,
                            argMin(coalesce(properties.$referring_domain, ''), timestamp) AS ref,
-                           argMin(coalesce(properties.$utm_medium, ''), timestamp) AS utm_med
+                           argMin(coalesce(properties.$utm_medium, ''), timestamp) AS utm_med,
+                           argMin(coalesce(properties.$utm_source, ''), timestamp) AS utm_src,
+                           argMin(coalesce(properties.$gclid, ''), timestamp) AS gclid,
+                           argMin(coalesce(properties.$fbclid, ''), timestamp) AS fbclid,
+                           argMin(coalesce(properties.$msclkid, ''), timestamp) AS msclkid
                     FROM events
                     WHERE timestamp >= ${startD} AND timestamp <= ${endD} AND $session_id IS NOT NULL
                     GROUP BY sid
                   )
-                  SELECT ${channelCase("ref", "utm_med")} AS channel, count() AS sessions
+                  SELECT ${channelCase("ref", "utm_med", "utm_src", "gclid", "fbclid", "msclkid")} AS channel, count() AS sessions
                   FROM sa GROUP BY channel ORDER BY sessions DESC`,
         }),
         runHogQLMultiProject({
           projectIds,
           query: `SELECT properties.$current_url FROM events
                   WHERE event = '$pageview' AND timestamp >= ${startD} AND timestamp <= ${endD}
-                    AND notEmpty(properties.$current_url)
+                    AND notEmpty(properties.$current_url)${chCur}
                   GROUP BY properties.$current_url ORDER BY count() DESC LIMIT 500`,
         }),
+        // Path flow: ordered pageview URLs (first 6) for sessions that hit a
+        // funnel-start page AND the end event.
+        funnelStartPages.length > 0 && funnelEnd
+          ? runHogQLMultiProject({
+              projectIds,
+              query: `SELECT arraySlice(
+                        arrayMap(x -> x.2, arraySort(x -> x.1, groupArray((timestamp, properties.$current_url)))),
+                        1, 6
+                      ) AS path
+                      FROM events
+                      WHERE event = '$pageview' AND timestamp >= ${startD} AND timestamp <= ${endD}
+                        AND notEmpty(properties.$current_url)
+                        AND $session_id IN (
+                          SELECT DISTINCT $session_id FROM events
+                          WHERE event = '$pageview' AND timestamp >= ${startD} AND timestamp <= ${endD}
+                            AND (${orContainsSql("properties.$current_url", funnelStartPages)})
+                        )
+                        AND $session_id IN (
+                          SELECT DISTINCT $session_id FROM events
+                          WHERE event = ${quote(funnelEnd)} AND timestamp >= ${startD} AND timestamp <= ${endD}
+                        )${chCur}
+                      GROUP BY $session_id LIMIT 5000`,
+            })
+          : Promise.resolve({ columns: [], results: [] } as HogQLResult),
       ]);
 
       dailySessions = sessionsTs.results.map((r) => ({ date: String(r[0] ?? ""), value: Number(r[1] ?? 0) }));
@@ -280,6 +340,9 @@ export async function PostHogContent({ searchParams: sp, overviewHref, gscHref, 
       eventOptions = eventOptsRows.results.map((r) => String(r[0] ?? "")).filter(Boolean);
       pageOptions = pageOptsRows.results.map((r) => String(r[0] ?? "")).filter(Boolean);
       channelRows = channelsRes.results.map((r) => ({ channel: String(r[0] ?? ""), sessions: Number(r[1] ?? 0) }));
+      sessionPaths = pathsRes.results
+        .map((r) => Array.isArray(r[0]) ? (r[0] as string[]).filter(Boolean) : [])
+        .filter((arr) => arr.length > 0);
       recordings = recsResult;
 
       if ((funnelStartPages.length > 0 || funnelStart) && funnelEnd && funnelRes.results[0]) {
@@ -321,9 +384,11 @@ export async function PostHogContent({ searchParams: sp, overviewHref, gscHref, 
           currentStart={range.startDate}
           currentEnd={range.endDate}
           currentEventNames={eventNames}
+          currentChannels={selectedChannels}
           currentFunnelStartPages={funnelStartPages}
           currentFunnelStart={funnelStart}
           currentFunnelEnd={funnelEnd}
+          channelOptions={CHANNEL_NAMES}
           eventOptions={eventOptions}
           pageOptions={pageOptions}
         />
@@ -528,6 +593,18 @@ export async function PostHogContent({ searchParams: sp, overviewHref, gscHref, 
                 );
               })()}
             </TableExport>
+          </div>
+        </section>
+
+        <section className="max-w-[1400px] mx-auto px-6 mt-8">
+          <div className="bg-white border border-gray-200 rounded-md p-4">
+            <h3 className="text-xl font-bold text-gray-900 mb-1">User path flow</h3>
+            <p className="text-sm text-gray-500 mb-3">
+              Page sequences for users who landed on a funnel-start page and reached the end event.
+              Each column is the Nth pageview in the session (capped at 5), terminating in <span className="font-semibold">{funnelEnd || "Intake form"}</span>.
+              Top {8} pages per step are shown; the rest roll up into <span className="italic">Other</span>.
+            </p>
+            <UserPaths paths={sessionPaths} />
           </div>
         </section>
 

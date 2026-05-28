@@ -9,9 +9,11 @@ export interface PosthogProject {
   projectName: string;
 }
 
+export type HogQLValue = string | number | boolean | null | HogQLValue[];
+
 export interface HogQLResult {
   columns: string[];
-  results: (string | number | null)[][];
+  results: HogQLValue[][];
 }
 
 function creds(): { host: string; key: string } {
@@ -66,7 +68,7 @@ export async function listPosthogProjects(): Promise<PosthogProject[]> {
 }
 
 interface QueryResp {
-  results: (string | number | null)[][];
+  results: HogQLValue[][];
   columns?: string[];
   types?: string[];
 }
@@ -92,7 +94,7 @@ export async function runHogQLMultiProject(opts: { projectIds: string[]; query: 
       if (typeof v === "number") numericIdx.add(i);
     });
   }
-  const grouped = new Map<string, (string | number | null)[]>();
+  const grouped = new Map<string, HogQLValue[]>();
   for (const part of parts) {
     for (const row of part.results) {
       const key = row.map((v, i) => (numericIdx.has(i) ? "" : String(v))).join("\x00");

@@ -24,9 +24,11 @@ export function PostHogControls({
   currentStart,
   currentEnd,
   currentEventNames,
+  currentChannels,
   currentFunnelStartPages,
   currentFunnelStart,
   currentFunnelEnd,
+  channelOptions,
   eventOptions,
   pageOptions,
 }: {
@@ -36,9 +38,11 @@ export function PostHogControls({
   currentStart: string;
   currentEnd: string;
   currentEventNames: string[];
+  currentChannels: string[];
   currentFunnelStartPages: string[];
   currentFunnelStart: string;
   currentFunnelEnd: string;
+  channelOptions: string[];
   eventOptions: string[];
   pageOptions: string[];
 }) {
@@ -78,7 +82,7 @@ export function PostHogControls({
 
   return (
     <section className="max-w-[1400px] mx-auto px-6 pt-6">
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-3 mb-3">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 mb-3">
         <Combobox
           label="PostHog projects (multi-select)"
           values={currentProjects.map(projectLabel)}
@@ -88,7 +92,7 @@ export function PostHogControls({
             const ids = vs
               .map((label) => projects.find((p) => `${p.organizationName} — ${p.projectName}` === label)?.projectId)
               .filter(Boolean) as string[];
-            pushImmediate({ projectId: ids.length ? ids.join(",") : null, eventName: null, funnelStart: null, funnelEnd: null, funnelStartPages: null });
+            pushImmediate({ projectId: ids.length ? ids.join(",") : null, eventName: null, funnelStart: null, funnelEnd: null, funnelStartPages: null, channel: null });
           }}
           placeholder="Select projects…"
         />
@@ -102,6 +106,14 @@ export function PostHogControls({
             pushDebounced({ eventName: vs.length ? vs.join(",") : null });
           }}
           placeholder="All events"
+        />
+        <Combobox
+          label="Channel (multi-select)"
+          values={currentChannels}
+          options={channelOptions}
+          multi
+          onChange={(vs) => pushImmediate({ channel: vs.length ? vs.join(",") : null })}
+          placeholder="All channels"
         />
         <Combobox
           label="Funnel start pages (URL contains)"
