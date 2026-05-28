@@ -1,0 +1,76 @@
+import { formatHumanDate } from "@/lib/date-utils";
+import { TabLink } from "./TabLink";
+import { TabNav } from "./TabNav";
+import { NavigationProvider } from "./NavigationContext";
+import { DownloadPdfButton } from "./DownloadPdfButton";
+
+export type PresentationTab = "gsc" | "ga4" | "ai" | "overview" | "posthog";
+
+export function PresentationHeader({
+  title,
+  startDate,
+  endDate,
+  activeTab,
+  overviewHref,
+  gscHref,
+  ga4Href,
+  aiHref,
+  posthogHref,
+}: {
+  title: string;
+  startDate: string;
+  endDate: string;
+  activeTab: PresentationTab;
+  overviewHref: string;
+  gscHref: string;
+  ga4Href: string;
+  aiHref: string;
+  posthogHref: string;
+}) {
+  const tabs = [
+    { id: "overview" as const, href: overviewHref, label: "Overview" },
+    { id: "gsc" as const, href: gscHref, label: "GSC" },
+    { id: "ga4" as const, href: ga4Href, label: "GA4" },
+    { id: "ai" as const, href: aiHref, label: "AI" },
+    { id: "posthog" as const, href: posthogHref, label: "PostHog" },
+  ];
+
+  return (
+    <header className="relative z-[200] bg-black text-white">
+      <div className="max-w-[1400px] mx-auto px-6 py-4 grid grid-cols-2 gap-y-3 items-center">
+        {/* Top-left: logo */}
+        <div className="flex items-center">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/omniflow-logo.png"
+            alt="OMNIFLOW"
+            className="h-7 w-auto"
+            style={{ filter: "invert(1) brightness(2)" }}
+          />
+        </div>
+
+        {/* Top-right: page title */}
+        <h1 className="text-right text-2xl font-bold m-0">{title}</h1>
+
+        {/* Bottom-left: tab nav with sliding background */}
+        <NavigationProvider>
+          <TabNav tabs={tabs} activeTab={activeTab}>
+            {tabs.map((t) => (
+              <TabLink key={t.id} href={t.href} label={t.label} active={activeTab === t.id} />
+            ))}
+          </TabNav>
+        </NavigationProvider>
+
+        {/* Bottom-right: date range + PDF export */}
+        <div className="justify-self-end inline-flex items-center gap-2">
+          <div className="inline-flex items-center gap-2 bg-black border border-neutral-800 px-3 py-1.5 text-sm">
+            <span className="tabular-nums">
+              {formatHumanDate(startDate)} – {formatHumanDate(endDate)}
+            </span>
+          </div>
+          <DownloadPdfButton filename={`omniflow-${activeTab}-report`} />
+        </div>
+      </div>
+    </header>
+  );
+}
