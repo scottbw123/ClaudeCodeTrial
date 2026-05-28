@@ -14,6 +14,7 @@ interface Props {
   gscHref: string;
   ga4Href: string;
   aiHref: string;
+  posthogHref: string;
 }
 
 function pct(current: number, previous: number): number {
@@ -105,7 +106,7 @@ function spark(daily: DailyRow[], idx: number): Sparkpoint[] {
   return daily.map((d) => ({ date: d.date, value: d.values[idx] ?? 0 }));
 }
 
-export async function OverviewContent({ searchParams: sp, overviewHref, gscHref, ga4Href, aiHref }: Props) {
+export async function OverviewContent({ searchParams: sp, overviewHref, gscHref, ga4Href, aiHref, posthogHref }: Props) {
   const [sites, properties] = await Promise.all([listSites(), listProperties()]);
   const siteUrls = (sp.site || sites[0]?.siteUrl || "").split(",").map((s) => s.trim()).filter(Boolean);
   const propertyIds = (sp.propertyId || properties[0]?.propertyId || "").split(",").map((s) => s.trim()).filter(Boolean);
@@ -290,6 +291,7 @@ export async function OverviewContent({ searchParams: sp, overviewHref, gscHref,
         gscHref={gscHref}
         ga4Href={ga4Href}
         aiHref={aiHref}
+        posthogHref={posthogHref}
       />
       <main className="bg-white min-h-screen">
 

@@ -4,7 +4,7 @@ import { TabNav } from "./TabNav";
 import { NavigationProvider } from "./NavigationContext";
 import { DownloadPdfButton } from "./DownloadPdfButton";
 
-export type PresentationTab = "gsc" | "ga4" | "ai" | "overview";
+export type PresentationTab = "gsc" | "ga4" | "ai" | "overview" | "posthog";
 
 export function PresentationHeader({
   title,
@@ -15,6 +15,7 @@ export function PresentationHeader({
   gscHref,
   ga4Href,
   aiHref,
+  posthogHref,
 }: {
   title: string;
   startDate: string;
@@ -24,12 +25,14 @@ export function PresentationHeader({
   gscHref: string;
   ga4Href: string;
   aiHref: string;
+  posthogHref: string;
 }) {
   const tabs = [
     { id: "overview" as const, href: overviewHref, label: "Overview" },
     { id: "gsc" as const, href: gscHref, label: "GSC" },
     { id: "ga4" as const, href: ga4Href, label: "GA4" },
     { id: "ai" as const, href: aiHref, label: "AI" },
+    { id: "posthog" as const, href: posthogHref, label: "PostHog" },
   ];
 
   return (

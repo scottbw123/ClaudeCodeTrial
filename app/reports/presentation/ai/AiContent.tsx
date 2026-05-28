@@ -51,6 +51,7 @@ interface Props {
   gscHref: string;
   ga4Href: string;
   aiHref: string;
+  posthogHref: string;
 }
 
 function pct(current: number, previous: number): number {
@@ -120,7 +121,7 @@ async function fetchSiteMetrics(propertyIds: string[], startDate: string, endDat
   return toMetrics(r.totals);
 }
 
-export async function AiContent({ searchParams: sp, overviewHref, gscHref, ga4Href, aiHref }: Props) {
+export async function AiContent({ searchParams: sp, overviewHref, gscHref, ga4Href, aiHref, posthogHref }: Props) {
   const properties = await listProperties();
   const propertyIds = (sp.propertyId || properties[0]?.propertyId || "").split(",").map((s) => s.trim()).filter(Boolean);
 
@@ -383,6 +384,7 @@ export async function AiContent({ searchParams: sp, overviewHref, gscHref, ga4Hr
         gscHref={gscHref}
         ga4Href={ga4Href}
         aiHref={aiHref}
+        posthogHref={posthogHref}
       />
       <main className="bg-white min-h-screen">
 

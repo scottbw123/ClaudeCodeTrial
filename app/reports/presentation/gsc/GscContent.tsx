@@ -15,6 +15,7 @@ interface Props {
   gscHref: string;
   ga4Href: string;
   aiHref: string;
+  posthogHref: string;
 }
 
 function aggregate(rows: { clicks: number; impressions: number; position: number }[]) {
@@ -83,7 +84,7 @@ function buildDeltaRows(current: GscRow[], previous: GscRow[]): DeltaRow[] {
   });
 }
 
-export async function GscContent({ searchParams: sp, overviewHref, gscHref, ga4Href, aiHref }: Props) {
+export async function GscContent({ searchParams: sp, overviewHref, gscHref, ga4Href, aiHref, posthogHref }: Props) {
   const sites = await listSites();
 
   const siteUrls = (sp.site || sites[0]?.siteUrl || "").split(",").map((s) => s.trim()).filter(Boolean);
@@ -294,6 +295,7 @@ export async function GscContent({ searchParams: sp, overviewHref, gscHref, ga4H
         gscHref={gscHref}
         ga4Href={ga4Href}
         aiHref={aiHref}
+        posthogHref={posthogHref}
       />
       <main className="bg-white min-h-screen">
 

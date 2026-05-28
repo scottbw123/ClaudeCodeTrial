@@ -37,6 +37,7 @@ interface Props {
   gscHref: string;
   ga4Href: string;
   aiHref: string;
+  posthogHref: string;
 }
 
 function pct(current: number, previous: number): number {
@@ -118,7 +119,7 @@ function sumMetric(rows: Ga4Row[], idx: number): number {
   return rows.reduce((s, r) => s + Number(r.metricValues[idx] ?? 0), 0);
 }
 
-export async function Ga4Content({ searchParams: sp, overviewHref, gscHref, ga4Href, aiHref }: Props) {
+export async function Ga4Content({ searchParams: sp, overviewHref, gscHref, ga4Href, aiHref, posthogHref }: Props) {
   const properties = await listProperties();
 
   const propertyIds = (sp.propertyId || properties[0]?.propertyId || "").split(",").map((s) => s.trim()).filter(Boolean);
@@ -383,6 +384,7 @@ export async function Ga4Content({ searchParams: sp, overviewHref, gscHref, ga4H
         gscHref={gscHref}
         ga4Href={ga4Href}
         aiHref={aiHref}
+        posthogHref={posthogHref}
       />
       <main className="bg-white min-h-screen">
 
