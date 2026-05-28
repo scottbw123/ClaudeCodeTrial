@@ -1,5 +1,5 @@
 import { listProperties, runReportMultiProperty, type Ga4Filter, type Ga4Row } from "@/lib/ga4";
-import { normalizePageUrl } from "@/lib/gsc";
+import { normalizePageUrl, escapeRegex } from "@/lib/gsc";
 import { previousPeriod, rangeFromDays, daysBetween } from "@/lib/date-utils";
 import { AI_SOURCES } from "@/lib/ai-sources";
 import { PresentationHeader } from "../components/Header";
@@ -140,7 +140,10 @@ export async function AiContent({ searchParams: sp, overviewHref, gscHref, ga4Hr
   const includePaths = pageUrls.map(pathOf);
   const excludePaths = pageUrlsExclude.map(pathOf);
   if (includePaths.length > 0) baseFilters.push({ fieldName: "landingPagePlusQueryString", matchType: "CONTAINS", values: includePaths });
-  if (excludePaths.length > 0) baseFilters.push({ fieldName: "landingPagePlusQueryString", matchType: "CONTAINS", values: excludePaths, negate: true });
+  // Use PARTIAL_REGEXP for negated matches — GA4's notExpression(stringFilter CONTAINS)
+  // is unreliable on some properties; PARTIAL_REGEXP behaves the same (substring) but
+  // goes through the regex engine, which honors notExpression consistently.
+  if (excludePaths.length > 0) baseFilters.push({ fieldName: "landingPagePlusQueryString", matchType: "PARTIAL_REGEXP", values: excludePaths.map(escapeRegex), negate: true });
   if (eventNames.length === 1) baseFilters.push({ fieldName: "eventName", value: eventNames[0] });
   else if (eventNames.length > 1) baseFilters.push({ fieldName: "eventName", values: eventNames });
 
@@ -409,7 +412,7 @@ export async function AiContent({ searchParams: sp, overviewHref, gscHref, ga4Hr
 
       <details data-pdf-hide className="max-w-[1400px] mx-auto px-6 mt-4" open>
         <summary className="cursor-pointer text-xs uppercase tracking-wide text-gray-500 font-semibold not-italic">
-          Filter diagnostics — server received
+          Filter diagnostics — server received + GA4 response
         </summary>
         <pre className="mt-2 text-[11px] bg-gray-900 text-gray-100 p-3 overflow-x-auto rounded-md not-italic leading-relaxed">
 {JSON.stringify({
@@ -424,6 +427,15 @@ export async function AiContent({ searchParams: sp, overviewHref, gscHref, ga4Hr
   },
   parsed: { pageUrls, pageUrlsExclude, eventNames, includePaths, excludePaths },
   baseFilters,
+  ga4Response: {
+    pagesRowsCount: pagesRows.length,
+    pagesContainingExcludedSubstring: excludePaths.length > 0
+      ? pagesRows.filter((r) => excludePaths.some((sub) =>
+          (r.dimensionValues[0] ?? "").toLowerCase().includes(sub.toLowerCase())
+        )).map((r) => ({ url: r.dimensionValues[0], sessions: r.metricValues[0] }))
+      : [],
+    first5Urls: pagesRows.slice(0, 5).map((r) => ({ url: r.dimensionValues[0], sessions: r.metricValues[0] })),
+  },
 }, null, 2)}
         </pre>
       </details>
